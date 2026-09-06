@@ -25,6 +25,9 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -218,7 +221,6 @@ private fun ServerListPage(
                                 actions = actions
                             )
                         }
-                        ItemDivider()
                     }
                 } else {
                     ServerItemRow(
@@ -226,7 +228,6 @@ private fun ServerListPage(
                         isSelected = row.guid == selectedGuid,
                         actions = actions
                     )
-                    ItemDivider()
                 }
             }
         }
@@ -286,15 +287,12 @@ private fun ServerItemColumn(
     doubleColumnDisplay: Boolean,
     actions: ServerRowActions
 ) {
-    Column {
-        ServerListItem(
-            row = row,
-            isSelected = isSelected,
-            doubleColumnDisplay = doubleColumnDisplay,
-            actions = actions
-        )
-        ItemDivider()
-    }
+    ServerListItem(
+        row = row,
+        isSelected = isSelected,
+        doubleColumnDisplay = doubleColumnDisplay,
+        actions = actions
+    )
 }
 
 @Composable
@@ -314,100 +312,116 @@ private fun ServerListItem(
     } else {
         null
     }
-    Row(
+
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
             .semantics {
                 if (selectedStateDescription != null) {
                     stateDescription = selectedStateDescription
                 }
             }
-            .clickable { actions.select(row.guid) }
+            .clickable { actions.select(row.guid) },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainer
+            }
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 1.dp)
     ) {
-        Box(
-            Modifier
-                .width(10.dp)
-                .fillMaxHeight()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
         ) {
-            if (isSelected) {
-                Row {
-                    Spacer(Modifier.width(6.dp))
-                    Box(
-                        Modifier
-                            .width(4.dp)
-                            .fillMaxHeight()
-                            .padding(vertical = 10.dp)
-                            .background(MaterialTheme.colorScheme.primary)
+            Box(
+                Modifier
+                    .width(10.dp)
+                    .fillMaxHeight()
+            ) {
+                if (isSelected) {
+                    Row {
+                        Spacer(Modifier.width(6.dp))
+                        Box(
+                            Modifier
+                                .width(4.dp)
+                                .fillMaxHeight()
+                                .padding(vertical = 10.dp)
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
+                    }
+                }
+            }
+
+            Column(
+                Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp, end = 12.dp, top = 10.dp, bottom = 10.dp)
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(row.remarks, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge.copy(lineBreak = LineBreak.Paragraph), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (doubleColumnDisplay) {
+                        IconButton(onClick = { actions.more(row.guid, row.profile) }, Modifier.size(36.dp)) {
+                            Icon(
+                                painterResource(R.drawable.ic_more_vert_24dp),
+                                stringResource(R.string.acc_more),
+                                Modifier.size(24.dp)
+                            )
+                        }
+                    } else {
+                        IconButton(onClick = { actions.share(row.guid, row.profile) }, Modifier.size(36.dp)) {
+                            Icon(
+                                painterResource(R.drawable.ic_share_24dp),
+                                stringResource(R.string.title_configuration_share),
+                                Modifier.size(24.dp)
+                            )
+                        }
+                        IconButton(onClick = { actions.edit(row.guid, row.profile) }, Modifier.size(36.dp)) {
+                            Icon(
+                                painterResource(R.drawable.ic_edit_24dp),
+                                stringResource(R.string.acc_edit),
+                                Modifier.size(24.dp)
+                            )
+                        }
+                        IconButton(onClick = { actions.remove(row.guid) }, Modifier.size(36.dp)) {
+                            Icon(
+                                painterResource(R.drawable.ic_delete_24dp),
+                                stringResource(R.string.acc_delete),
+                                Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    if (row.subscriptionBadge.isNotBlank()) {
+                        Box(
+                            Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)), Alignment.Center
+                        ) {
+                            Text(row.subscriptionBadge.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    Text(
+                        row.statistics,
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-            }
-        }
-
-        Column(
-            Modifier
-                .weight(1f)
-                .padding(start = 8.dp, end = 12.dp, top = 8.dp, bottom = 8.dp)
-        ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(row.remarks, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge.copy(lineBreak = LineBreak.Paragraph), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                if (doubleColumnDisplay) {
-                    IconButton(onClick = { actions.more(row.guid, row.profile) }, Modifier.size(36.dp)) {
-                        Icon(
-                            painterResource(R.drawable.ic_more_vert_24dp),
-                            stringResource(R.string.acc_more),
-                            Modifier.size(24.dp)
-                        )
-                    }
-                } else {
-                    IconButton(onClick = { actions.share(row.guid, row.profile) }, Modifier.size(36.dp)) {
-                        Icon(
-                            painterResource(R.drawable.ic_share_24dp),
-                            stringResource(R.string.title_configuration_share),
-                            Modifier.size(24.dp)
-                        )
-                    }
-                    IconButton(onClick = { actions.edit(row.guid, row.profile) }, Modifier.size(36.dp)) {
-                        Icon(
-                            painterResource(R.drawable.ic_edit_24dp),
-                            stringResource(R.string.acc_edit),
-                            Modifier.size(24.dp)
-                        )
-                    }
-                    IconButton(onClick = { actions.remove(row.guid) }, Modifier.size(36.dp)) {
-                        Icon(
-                            painterResource(R.drawable.ic_delete_24dp),
-                            stringResource(R.string.acc_delete),
-                            Modifier.size(24.dp)
-                        )
-                    }
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(row.typeDescription, style = MaterialTheme.typography.bodySmall, color = colorConfigType, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(testResult, style = MaterialTheme.typography.bodySmall, color = if (row.testDelayMillis < 0L) colorPingRed else colorPing, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (row.subscriptionBadge.isNotBlank()) {
-                    Box(
-                        Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)), Alignment.Center
-                    ) {
-                        Text(row.subscriptionBadge.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                Text(
-                    row.statistics,
-                    Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(row.typeDescription, style = MaterialTheme.typography.bodySmall, color = colorConfigType, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(testResult, style = MaterialTheme.typography.bodySmall, color = if (row.testDelayMillis < 0L) colorPingRed else colorPing, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
