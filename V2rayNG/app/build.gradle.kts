@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.v2ray.ang"
+    namespace = "net.tirexnet.vpn"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.v2ray.ang"
+        applicationId = "net.tirexnet.vpn"
         minSdk = 24
         targetSdk = 37
         versionCode = 747
