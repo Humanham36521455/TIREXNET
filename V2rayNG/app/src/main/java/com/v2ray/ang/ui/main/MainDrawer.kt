@@ -99,7 +99,7 @@ fun MainDrawerContent(drawerState: DrawerState, onNavigate: (MainDestination) ->
                     verticalArrangement = Arrangement.Center
                 ) {
                     Image(
-                        painter = painterResource(R.drawable.tirexnet_logo),
+                        painter = painterResource(R.drawable.logo_text),
                         contentDescription = null,
                         modifier = Modifier.size(110.dp)
                     )
