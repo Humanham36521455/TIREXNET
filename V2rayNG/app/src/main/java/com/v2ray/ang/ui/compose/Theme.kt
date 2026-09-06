@@ -28,10 +28,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 private val LightColor = lightColorScheme(
-    primary = Color(0xFF000000), // Black
+    primary = Color(0xFF2E6FF2), // Tirex Blue
     onPrimary = Color(0xFFFFFFFF), // White
-    primaryContainer = Color(0xFFE0E0E0), // Light Gray
-    onPrimaryContainer = Color(0xFF000000), // Black
+    primaryContainer = Color(0xFFD6E4FF), // Pale Blue
+    onPrimaryContainer = Color(0xFF001A43), // Deep Navy
     secondary = Color(0xFFf97910), // Orange
     onSecondary = Color(0xFFFFFFFF), // White
     secondaryContainer = Color(0xFFFFE8D6), // Pale Orange
@@ -56,7 +56,7 @@ private val LightColor = lightColorScheme(
     inverseOnSurface = Color(0xFFF4EFF4), // Very Light Gray
     inversePrimary = Color(0xFFC0C0C0), // Silver Gray
     scrim = Color(0xFF000000), // Black
-    surfaceTint = Color(0xFF000000), // Black
+    surfaceTint = Color(0xFF2E6FF2), // Tirex Blue
     surfaceContainerLowest = Color(0xFFFFFFFF), // White
     surfaceContainerLow = Color(0xFFF7F7F7), // Very Light Gray
     surfaceContainer = Color(0xFFF1F1F1), // Light Gray
@@ -65,10 +65,10 @@ private val LightColor = lightColorScheme(
 )
 
 private val DarkColor = darkColorScheme(
-    primary = Color(0xFFC0C0C0), // Silver Gray
-    onPrimary = Color(0xFF303030), // Dark Gray
-    primaryContainer = Color(0xFF474747), // Gray
-    onPrimaryContainer = Color(0xFFE0E0E0), // Light Gray
+    primary = Color(0xFF4A8CFF), // Tirex Light Blue
+    onPrimary = Color(0xFF00193D), // Near Black Navy
+    primaryContainer = Color(0xFF0A3E8F), // Deep Blue
+    onPrimaryContainer = Color(0xFFD6E4FF), // Pale Blue
     secondary = Color(0xFFf97910), // Orange
     onSecondary = Color(0xFF4E2600), // Dark Brown
     secondaryContainer = Color(0xFF6F3800), // Brown
@@ -81,9 +81,9 @@ private val DarkColor = darkColorScheme(
     errorContainer = Color(0xFF93000A), // Dark Red
     onError = Color(0xFF690005), // Deep Red
     onErrorContainer = Color(0xFFFFDAD6), // Light Red
-    background = Color(0xFF1C1B1F), // Near Black
+    background = Color(0xFF000000), // Pure Black
     onBackground = Color(0xFFE6E1E5), // Light Gray
-    surface = Color(0xFF1C1B1F), // Near Black
+    surface = Color(0xFF000000), // Pure Black
     onSurface = Color(0xFFE6E1E5), // Light Gray
     surfaceVariant = Color(0xFF49454F), // Dark Gray
     onSurfaceVariant = Color(0xFFCAC4D0), // Light Gray
@@ -91,14 +91,14 @@ private val DarkColor = darkColorScheme(
     outlineVariant = Color(0xFF49454F), // Dark Gray
     inverseSurface = Color(0xFFE6E1E5), // Light Gray
     inverseOnSurface = Color(0xFF1C1B1F), // Near Black
-    inversePrimary = Color(0xFF000000), // Black
+    inversePrimary = Color(0xFF2E6FF2), // Tirex Blue
     scrim = Color(0xFF000000), // Black
-    surfaceTint = Color(0xFFC0C0C0), // Silver Gray
-    surfaceContainerLowest = Color(0xFF0F0F12), // Near Black
-    surfaceContainerLow = Color(0xFF1A191D), // Dark Gray
-    surfaceContainer = Color(0xFF1E1D21), // Dark Gray
-    surfaceContainerHigh = Color(0xFF282729), // Dark Gray
-    surfaceContainerHighest = Color(0xFF333234), // Dark Gray
+    surfaceTint = Color(0xFF4A8CFF), // Tirex Light Blue
+    surfaceContainerLowest = Color(0xFF000000), // Pure Black
+    surfaceContainerLow = Color(0xFF0D0D0F), // Near Black
+    surfaceContainer = Color(0xFF121214), // Near Black
+    surfaceContainerHigh = Color(0xFF1C1C1F), // Very Dark Gray
+    surfaceContainerHighest = Color(0xFF262629), // Dark Gray
 )
 
 // Semantic Colors
@@ -127,7 +127,7 @@ object ThemeManager {
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
 
     private val _dynamicColorEnabled = MutableStateFlow(
-        MmkvManager.decodeSettingsBool(AppConfig.PREF_DYNAMIC_COLOR, true)
+        MmkvManager.decodeSettingsBool(AppConfig.PREF_DYNAMIC_COLOR, false)
     )
     val dynamicColorEnabled: StateFlow<Boolean> = _dynamicColorEnabled.asStateFlow()
 
@@ -145,7 +145,7 @@ object ThemeManager {
         _themeMode.value =
             MmkvManager.decodeSettingsString(AppConfig.PREF_UI_MODE_NIGHT, "0") ?: "0"
         _dynamicColorEnabled.value =
-            MmkvManager.decodeSettingsBool(AppConfig.PREF_DYNAMIC_COLOR, true)
+            MmkvManager.decodeSettingsBool(AppConfig.PREF_DYNAMIC_COLOR, false)
     }
 }
 
