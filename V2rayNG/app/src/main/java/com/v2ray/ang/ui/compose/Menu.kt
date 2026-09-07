@@ -32,8 +32,8 @@ private val badgeColors = listOf(
 fun <T> AppDropdownMenuItems(
     items: List<T>,
     labelRes: (T) -> Int,
-    onSelected: (T) -> Unit,
-    iconRes: ((T) -> Int?)? = null
+    iconRes: ((T) -> Int?)? = null,
+    onSelected: (T) -> Unit
 ) {
     items.forEachIndexed { index, item ->
         val label = stringResource(labelRes(item))
