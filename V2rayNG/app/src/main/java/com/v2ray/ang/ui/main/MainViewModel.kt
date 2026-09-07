@@ -206,6 +206,7 @@ class MainViewModel(
             is MainAction.RemoveServer -> removeServerAndRefresh(action.guid)
             is MainAction.Search -> filterConfig(action.query)
             is MainAction.ImportBatchConfig -> importBatchConfig(action.configText)
+            is MainAction.ShowPasteConfigDialog -> { /* handled in UI layer */ }
             MainAction.LocateHandled -> consumeLocateTarget()
             is MainAction.ShareQRCode -> {
                 val bitmap = dataSource.share2QRCode(action.guid)
