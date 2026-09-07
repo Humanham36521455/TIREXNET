@@ -10,20 +10,20 @@ import com.v2ray.ang.extension.isComplexType
 import com.v2ray.ang.ui.compose.AppDropdownMenuItems
 import com.v2ray.ang.ui.compose.SelectListDialog
 
-private enum class ImportMenuAction(@StringRes val labelRes: Int, val action: MainAction) {
-    QRCode(R.string.menu_item_import_config_qrcode, MainAction.ImportQRcode),
-    Clipboard(R.string.menu_item_import_config_clipboard, MainAction.ImportClipboard),
-    LocalFile(R.string.menu_item_import_config_local, MainAction.ImportConfigLocal),
-    PolicyGroup(R.string.menu_item_import_config_policy_group, MainAction.ImportManually(EConfigType.POLICYGROUP.value)),
-    ProxyChain(R.string.menu_item_import_config_proxy_chain, MainAction.ImportManually(EConfigType.PROXYCHAIN.value)),
-    Vmess(R.string.menu_item_import_config_manually_vmess, MainAction.ImportManually(EConfigType.VMESS.value)),
-    Vless(R.string.menu_item_import_config_manually_vless, MainAction.ImportManually(EConfigType.VLESS.value)),
-    Shadowsocks(R.string.menu_item_import_config_manually_ss, MainAction.ImportManually(EConfigType.SHADOWSOCKS.value)),
-    Socks(R.string.menu_item_import_config_manually_socks, MainAction.ImportManually(EConfigType.SOCKS.value)),
-    Http(R.string.menu_item_import_config_manually_http, MainAction.ImportManually(EConfigType.HTTP.value)),
-    Trojan(R.string.menu_item_import_config_manually_trojan, MainAction.ImportManually(EConfigType.TROJAN.value)),
-    WireGuard(R.string.menu_item_import_config_manually_wireguard, MainAction.ImportManually(EConfigType.WIREGUARD.value)),
-    Hysteria2(R.string.menu_item_import_config_manually_hysteria2, MainAction.ImportManually(EConfigType.HYSTERIA2.value))
+private enum class ImportMenuAction(@StringRes val labelRes: Int, val iconRes: Int?, val action: MainAction) {
+    QRCode(R.string.menu_item_import_config_qrcode, R.drawable.ic_qu_scan_24dp, MainAction.ImportQRcode),
+    Clipboard(R.string.menu_item_import_config_clipboard, R.drawable.ic_copy, MainAction.ImportClipboard),
+    LocalFile(R.string.menu_item_import_config_local, R.drawable.ic_cloud_download_24dp, MainAction.ImportConfigLocal),
+    PolicyGroup(R.string.menu_item_import_config_policy_group, R.drawable.ic_select_all_24dp, MainAction.ImportManually(EConfigType.POLICYGROUP.value)),
+    ProxyChain(R.string.menu_item_import_config_proxy_chain, R.drawable.ic_routing_24dp, MainAction.ImportManually(EConfigType.PROXYCHAIN.value)),
+    Vmess(R.string.menu_item_import_config_manually_vmess, null, MainAction.ImportManually(EConfigType.VMESS.value)),
+    Vless(R.string.menu_item_import_config_manually_vless, null, MainAction.ImportManually(EConfigType.VLESS.value)),
+    Shadowsocks(R.string.menu_item_import_config_manually_ss, null, MainAction.ImportManually(EConfigType.SHADOWSOCKS.value)),
+    Socks(R.string.menu_item_import_config_manually_socks, null, MainAction.ImportManually(EConfigType.SOCKS.value)),
+    Http(R.string.menu_item_import_config_manually_http, null, MainAction.ImportManually(EConfigType.HTTP.value)),
+    Trojan(R.string.menu_item_import_config_manually_trojan, null, MainAction.ImportManually(EConfigType.TROJAN.value)),
+    WireGuard(R.string.menu_item_import_config_manually_wireguard, null, MainAction.ImportManually(EConfigType.WIREGUARD.value)),
+    Hysteria2(R.string.menu_item_import_config_manually_hysteria2, null, MainAction.ImportManually(EConfigType.HYSTERIA2.value))
 }
 
 enum class MainMoreMenuAction(@StringRes val labelRes: Int) {
@@ -62,6 +62,7 @@ internal fun serverMenuActions(
 fun ImportMenuContent(onAction: (MainAction) -> Unit) = AppDropdownMenuItems(
     items = ImportMenuAction.entries,
     labelRes = { it.labelRes },
+    iconRes = { it.iconRes },
     onSelected = { onAction(it.action) }
 )
 
