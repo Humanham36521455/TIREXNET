@@ -101,7 +101,7 @@ fun MainDrawerContent(drawerState: DrawerState, onNavigate: (MainDestination) ->
                     Image(
                         painter = painterResource(R.drawable.logo_text),
                         contentDescription = null,
-                        modifier = Modifier.size(110.dp)
+                        modifier = Modifier.size(190.dp)
                     )
                     Text(
                         text = stringResource(R.string.app_name),
