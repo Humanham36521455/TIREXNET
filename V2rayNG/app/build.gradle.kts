@@ -200,6 +200,9 @@ dependencies {
     // Reorderable list
     implementation(libs.reorderable)
 
+    // Native MTProto engine bridge (JNA)
+    implementation("net.java.dev.jna:jna:5.14.0@aar")
+
     // Testing Libraries
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
