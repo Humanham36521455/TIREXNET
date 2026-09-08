@@ -32,10 +32,14 @@ object NotificationManager {
     private const val NOTIFICATION_PENDING_INTENT_STOP_V2RAY = 1
     private const val NOTIFICATION_PENDING_INTENT_RESTART_V2RAY = 2
     private const val QUERY_INTERVAL_MS = 3000L
+    private const val RUN_ANIM_INTERVAL_MS = 400L
 
     private var lastQueryTime = 0L
     private var mBuilder: NotificationCompat.Builder? = null
     private var speedNotificationJob: Job? = null
+    private var runAnimJob: Job? = null
+    private var runFrameToggle = false
+    private var isTrafficActive = false
     private var mNotificationManager: NotificationManager? = null
 
     /**
@@ -135,6 +139,7 @@ object NotificationManager {
         mBuilder = null
         speedNotificationJob?.cancel()
         speedNotificationJob = null
+        stopRunAnimation()
         mNotificationManager = null
     }
 
@@ -166,19 +171,49 @@ object NotificationManager {
     }
 
     /**
+     * Starts the fast leg-toggle animation loop while traffic is flowing.
+     */
+    private fun startRunAnimation() {
+        if (runAnimJob != null) return
+        runAnimJob = CoroutineScope(Dispatchers.IO).launch {
+            while (isActive) {
+                runFrameToggle = !runFrameToggle
+                val icon = if (runFrameToggle) R.drawable.ic_stat_dino_run else R.drawable.ic_stat_dino_run2
+                mBuilder?.setSmallIcon(icon)
+                getNotificationManager()?.notify(NOTIFICATION_ID, mBuilder?.build())
+                delay(RUN_ANIM_INTERVAL_MS)
+            }
+        }
+    }
+
+    /**
+     * Stops the leg-toggle animation loop and returns to a static icon.
+     */
+    private fun stopRunAnimation() {
+        runAnimJob?.cancel()
+        runAnimJob = null
+        runFrameToggle = false
+    }
+
+    /**
      * Updates the notification with the given content text and traffic data.
-     * Shows the idle dino icon when there is no data flow, and the running dino
-     * with a meteor trail when the config is actively passing traffic.
+     * Shows the idle dino icon when there is no data flow, and toggles between two
+     * running frames (fast leg animation) while the config is actively passing traffic.
      * @param contentText The content text.
      * @param proxyTraffic The proxy traffic.
      * @param directTraffic The direct traffic.
      */
     private fun updateNotification(contentText: String?, proxyTraffic: Long, directTraffic: Long) {
         if (mBuilder != null) {
-            if (proxyTraffic <= 0L && directTraffic <= 0L) {
-                mBuilder?.setSmallIcon(R.drawable.ic_stat_dino_idle)
-            } else {
-                mBuilder?.setSmallIcon(R.drawable.ic_stat_dino_run)
+            val hasTraffic = proxyTraffic > 0L || directTraffic > 0L
+            if (hasTraffic != isTrafficActive) {
+                isTrafficActive = hasTraffic
+                if (hasTraffic) {
+                    startRunAnimation()
+                } else {
+                    stopRunAnimation()
+                    mBuilder?.setSmallIcon(R.drawable.ic_stat_dino_idle)
+                }
             }
             mBuilder?.setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
             mBuilder?.setContentText(contentText)
