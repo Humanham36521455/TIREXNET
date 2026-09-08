@@ -77,6 +77,10 @@ fun MirrlyDialog(
                     isConnecting = true
                     onConnectStarted?.invoke()
 
+                    // Capture strings in composable context before launching coroutine
+                    val successMsg = stringResource(R.string.mirrly_toast_connect_started)
+                    val failedMsgPrefix = stringResource(R.string.mirrly_toast_connect_failed)
+
                     // execute in coroutine IO to avoid blocking UI
                     coroutineScope.launch {
                         val code = withContext(Dispatchers.IO) {
@@ -88,10 +92,10 @@ fun MirrlyDialog(
                         }
                         isConnecting = false
                         if (code == 0) {
-                            Toast.makeText(ctx, stringResource(R.string.mirrly_toast_connect_started), Toast.LENGTH_SHORT).show()
+                            Toast.makeText(ctx, successMsg, Toast.LENGTH_SHORT).show()
                             onDismiss()
                         } else {
-                            Toast.makeText(ctx, stringResource(R.string.mirrly_toast_connect_failed, code), Toast.LENGTH_LONG).show()
+                            Toast.makeText(ctx, "$failedMsgPrefix $code", Toast.LENGTH_LONG).show()
                         }
                     }
                 },
