@@ -31,7 +31,6 @@ object NotificationManager {
     private const val NOTIFICATION_PENDING_INTENT_CONTENT = 0
     private const val NOTIFICATION_PENDING_INTENT_STOP_V2RAY = 1
     private const val NOTIFICATION_PENDING_INTENT_RESTART_V2RAY = 2
-    private const val NOTIFICATION_ICON_THRESHOLD = 3000
     private const val QUERY_INTERVAL_MS = 3000L
 
     private var lastQueryTime = 0L
@@ -92,7 +91,7 @@ object NotificationManager {
             }
 
         mBuilder = NotificationCompat.Builder(service, channelId)
-            .setSmallIcon(R.drawable.ic_stat_name)
+            .setSmallIcon(R.drawable.ic_stat_dino_idle)
             .setContentTitle(currentConfig?.remarks ?: service.getString(R.string.app_name))
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
@@ -168,18 +167,18 @@ object NotificationManager {
 
     /**
      * Updates the notification with the given content text and traffic data.
+     * Shows the idle dino icon when there is no data flow, and the running dino
+     * with a meteor trail when the config is actively passing traffic.
      * @param contentText The content text.
      * @param proxyTraffic The proxy traffic.
      * @param directTraffic The direct traffic.
      */
     private fun updateNotification(contentText: String?, proxyTraffic: Long, directTraffic: Long) {
         if (mBuilder != null) {
-            if (proxyTraffic < NOTIFICATION_ICON_THRESHOLD && directTraffic < NOTIFICATION_ICON_THRESHOLD) {
-                mBuilder?.setSmallIcon(R.drawable.ic_stat_name)
-            } else if (proxyTraffic > directTraffic) {
-                mBuilder?.setSmallIcon(R.drawable.ic_stat_proxy)
+            if (proxyTraffic <= 0L && directTraffic <= 0L) {
+                mBuilder?.setSmallIcon(R.drawable.ic_stat_dino_idle)
             } else {
-                mBuilder?.setSmallIcon(R.drawable.ic_stat_direct)
+                mBuilder?.setSmallIcon(R.drawable.ic_stat_dino_run)
             }
             mBuilder?.setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
             mBuilder?.setContentText(contentText)
