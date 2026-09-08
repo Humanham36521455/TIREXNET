@@ -16,6 +16,7 @@ private enum class ImportMenuAction(@StringRes val labelRes: Int, val iconRes: I
     LocalFile(R.string.menu_item_import_config_local, R.drawable.ic_cloud_download_24dp, MainAction.ImportConfigLocal),
     WireGuardPaste(R.string.menu_item_import_config_wireguard_paste, R.drawable.ic_restore_24dp, MainAction.ShowPasteConfigDialog(false)),
     AmneziaPaste(R.string.menu_item_import_config_amnezia_paste, R.drawable.ic_privacy_24dp, MainAction.ShowPasteConfigDialog(true)),
+    MirrlyProxy(R.string.menu_item_import_config_mirrly, R.drawable.ic_telegram_24dp, MainAction.ShowMirrlyDialog),
     PolicyGroup(R.string.menu_item_import_config_policy_group, R.drawable.ic_select_all_24dp, MainAction.ImportManually(EConfigType.POLICYGROUP.value)),
     ProxyChain(R.string.menu_item_import_config_proxy_chain, R.drawable.ic_routing_24dp, MainAction.ImportManually(EConfigType.PROXYCHAIN.value)),
     Vmess(R.string.menu_item_import_config_manually_vmess, null, MainAction.ImportManually(EConfigType.VMESS.value)),
