@@ -34,6 +34,7 @@
     <string name="menu_item_import_config_local">Import from a local file</string>
     <string name="menu_item_import_config_wireguard_paste">Paste WireGuard config</string>
     <string name="menu_item_import_config_amnezia_paste">Paste AmneziaWG config</string>
+    <string name="menu_item_import_config_mirrly">Mirrly TG Proxy</string>
     <string name="menu_item_import_config_policy_group">Add [Policy group]</string>
     <string name="menu_item_import_config_proxy_chain">Add [Proxy chain]</string>
     <string name="menu_item_import_config_manually_vmess">Add [VMess]</string>
