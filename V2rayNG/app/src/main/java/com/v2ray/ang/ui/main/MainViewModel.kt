@@ -223,6 +223,7 @@ class MainViewModel(
             MainAction.ImportClipboard,
             MainAction.ImportConfigLocal,
             is MainAction.ImportManually,
+            MainAction.ShowMirrlyDialog,
             MainAction.RestartService,
             MainAction.LocateSelectedServer,
             is MainAction.EditServer,
