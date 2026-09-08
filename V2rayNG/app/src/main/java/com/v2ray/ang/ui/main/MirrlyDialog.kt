@@ -12,7 +12,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.v2ray.ang.R
 import com.v2ray.ang.mtproto.NativeProxy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -36,19 +38,19 @@ fun MirrlyDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isConnecting) onDismiss() },
-        title = { Text(text = "Mirrly TG Proxy") },
+        title = { Text(text = stringResource(R.string.title_mirrly_dialog)) },
         text = {
             Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
                 OutlinedTextField(
                     value = address,
                     onValueChange = { address = it },
-                    label = { Text("آدرس (مثال: 1.2.3.4)") },
+                    label = { Text(stringResource(R.string.mirrly_label_address)) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = portText,
                     onValueChange = { portText = it.filter { ch -> ch.isDigit() } },
-                    label = { Text("پورت") },
+                    label = { Text(stringResource(R.string.mirrly_label_port)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp)
@@ -56,7 +58,7 @@ fun MirrlyDialog(
                 OutlinedTextField(
                     value = secret,
                     onValueChange = { secret = it },
-                    label = { Text("سکرت (32 حرف، اختیاری)") },
+                    label = { Text(stringResource(R.string.mirrly_label_secret)) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp)
@@ -68,18 +70,17 @@ fun MirrlyDialog(
                 onClick = {
                     val port = portText.toIntOrNull()
                     if (address.isBlank() || port == null || port <= 0) {
-                        Toast.makeText(ctx, "آدرس یا پورت نامعتبر است", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(ctx, stringResource(R.string.mirrly_toast_invalid_addr_port), Toast.LENGTH_SHORT).show()
                         return@Button
                     }
 
                     isConnecting = true
                     onConnectStarted?.invoke()
 
-                    // اجرا در کوروتین ای‌او برای جلوگیری از بلاک UI
+                    // execute in coroutine IO to avoid blocking UI
                     coroutineScope.launch {
                         val code = withContext(Dispatchers.IO) {
                             try {
-                                // dcIps را خالی ارسال می‌کنیم (می‌توانید مقدار پیش‌فرض یا از تنظیمات بگیرید)
                                 NativeProxy.startProxy(address, port, "", secret, 0)
                             } catch (t: Throwable) {
                                 -1
@@ -87,21 +88,21 @@ fun MirrlyDialog(
                         }
                         isConnecting = false
                         if (code == 0) {
-                            Toast.makeText(ctx, "اتصال شروع شد", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(ctx, stringResource(R.string.mirrly_toast_connect_started), Toast.LENGTH_SHORT).show()
                             onDismiss()
                         } else {
-                            Toast.makeText(ctx, "اتصال ناموفق (کد: $code)", Toast.LENGTH_LONG).show()
+                            Toast.makeText(ctx, stringResource(R.string.mirrly_toast_connect_failed, code), Toast.LENGTH_LONG).show()
                         }
                     }
                 },
                 enabled = !isConnecting
             ) {
-                Text(if (isConnecting) "درحال اتصال…" else "اتصال")
+                Text(if (isConnecting) stringResource(R.string.mirrly_button_connecting) else stringResource(R.string.mirrly_button_connect))
             }
         },
         dismissButton = {
             TextButton(onClick = { if (!isConnecting) onDismiss() }, enabled = !isConnecting) {
-                Text("بستن")
+                Text(stringResource(R.string.mirrly_button_close))
             }
         }
     )
