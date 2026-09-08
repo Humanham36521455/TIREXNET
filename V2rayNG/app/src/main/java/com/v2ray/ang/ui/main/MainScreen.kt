@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -30,12 +32,18 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.content.Intent
+import android.net.Uri
 import com.v2ray.ang.R
 import com.v2ray.ang.dto.entities.ProfileItem
+import com.v2ray.ang.mtproto.NativeProxy
 import com.v2ray.ang.ui.compose.LocalDarkTheme
 import com.v2ray.ang.ui.compose.QRCodeDialog
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -68,7 +76,15 @@ fun MainScreen(
     var showRemoveConfirm by remember { mutableStateOf<String?>(null) }
     var pasteDialogAmnezia by remember { mutableStateOf<Boolean?>(null) }
     var pasteDialogText by remember { mutableStateOf("") }
+
     var showMirrlyDialog by remember { mutableStateOf(false) }
+    var mirrlyDomain by remember { mutableStateOf("mirrly-tg-proxy-worker.brawny-singer.workers.dev") }
+    var mirrlyPort by remember { mutableStateOf("1443") }
+    var mirrlyRunning by remember { mutableStateOf(false) }
+    var mirrlyStatus by remember { mutableStateOf("") }
+    var mirrlyLink by remember { mutableStateOf("") }
+    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
 
     var shareTarget by remember { mutableStateOf<Triple<String, ProfileItem, Boolean>?>(null) }
     val removeServer: (String) -> Unit = { guid ->
@@ -81,12 +97,10 @@ fun MainScreen(
                 pasteDialogText = ""
                 pasteDialogAmnezia = action.amnezia
             }
-            MainAction.ShowMirrlyDialog -> {
+            is MainAction.ShowMirrlyDialog -> {
                 showMirrlyDialog = true
             }
-            else -> {
-                onAction(action)
-            }
+            else -> onAction(action)
         }
     }
 
@@ -198,13 +212,78 @@ fun MainScreen(
     }
 
     if (showMirrlyDialog) {
-        MirrlyDialog(
-            initialAddress = "",
-            initialPort = null,
-            initialSecret = "",
-            onDismiss = { showMirrlyDialog = false },
-            onConnectStarted = null,
-            coroutineScope = scope
+        AlertDialog(
+            onDismissRequest = { showMirrlyDialog = false },
+            title = { Text(stringResource(R.string.menu_item_mirrly_tg_proxy)) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = mirrlyDomain,
+                        onValueChange = { mirrlyDomain = it },
+                        label = { Text(stringResource(R.string.mirrly_worker_domain)) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = mirrlyPort,
+                        onValueChange = { mirrlyPort = it.filter { c -> c.isDigit() } },
+                        label = { Text(stringResource(R.string.mirrly_port)) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (mirrlyStatus.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(mirrlyStatus)
+                    }
+                    if (mirrlyLink.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(mirrlyLink)
+                    }
+                }
+            },
+            confirmButton = {
+                if (mirrlyRunning) {
+                    TextButton(onClick = {
+                        if (mirrlyLink.isNotBlank()) {
+                            clipboard.setText(AnnotatedString(mirrlyLink))
+                        }
+                    }) {
+                        Text(stringResource(R.string.mirrly_copy_link))
+                    }
+                } else {
+                    TextButton(onClick = {
+                        val port = mirrlyPort.toIntOrNull() ?: 1443
+                        NativeProxy.setCfProxyCacheDir(context.cacheDir.absolutePath)
+                        NativeProxy.setCfProxyConfig(true, mirrlyDomain)
+                        val code = NativeProxy.startProxy("127.0.0.1", port, "", "", 0)
+                        if (code == 0) {
+                            mirrlyRunning = true
+                            mirrlyStatus = context.getString(R.string.mirrly_status_running, port)
+                            val secret = NativeProxy.getSecretWithPrefix().orEmpty()
+                            mirrlyLink = "tg://proxy?server=127.0.0.1&port=$port&secret=$secret"
+                        } else {
+                            mirrlyStatus = context.getString(R.string.mirrly_status_failed, code)
+                        }
+                    }) {
+                        Text(stringResource(R.string.mirrly_start))
+                    }
+                }
+            },
+            dismissButton = {
+                if (mirrlyRunning) {
+                    TextButton(onClick = {
+                        NativeProxy.stopProxy()
+                        mirrlyRunning = false
+                        mirrlyStatus = ""
+                        mirrlyLink = ""
+                    }) {
+                        Text(stringResource(R.string.mirrly_stop))
+                    }
+                } else {
+                    TextButton(onClick = { showMirrlyDialog = false }) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                }
+            }
         )
     }
 
