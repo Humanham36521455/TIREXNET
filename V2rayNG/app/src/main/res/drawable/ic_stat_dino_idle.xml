@@ -1,9 +1,9 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+<vector xmlns:android="http://schemas.android.com/apk/res/vector"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M16,4h2v2h-2z M18,4h2v2h-2z M14,6h2v2h-2z M16,6h2v2h-2z M18,6h2v2h-2z M6,8h2v2h-2z M8,8h2v2h-2z M10,8h2v2h-2z M12,8h2v2h-2z M14,8h2v2h-2z M16,8h2v2h-2z M4,10h2v2h-2z M6,10h2v2h-2z M8,10h2v2h-2z M10,10h2v2h-2z M12,10h2v2h-2z M14,10h2v2h-2z M16,10h2v2h-2z M18,10h2v2h-2z M2,12h2v2h-2z M4,12h2v2h-2z M6,12h2v2h-2z M8,12h2v2h-2z M10,12h2v2h-2z M12,12h2v2h-2z M14,12h2v2h-2z M16,12h2v2h-2z M18,12h2v2h-2z M20,12h2v2h-2z M4,14h2v2h-2z M6,14h2v2h-2z M8,14h2v2h-2z M10,14h2v2h-2z M12,14h2v2h-2z M14,14h2v2h-2z M16,14h2v2h-2z M18,14h2v2h-2z M6,16h2v2h-2z M8,16h2v2h-2z M10,16h2v2h-2z M12,16h2v2h-2z M14,16h2v2h-2z M16,16h2v2h-2z" />
+        android:pathData="M13,3 L19,3 L19,9 L21,9 L21,13 L19,13 L19,17 L16,17 L16,21 L13,21 L13,17 L8,17 L8,21 L5,21 L5,13 L3,13 L3,9 L8,9 L8,7 L13,7 Z M15,5 L15,7 L17,7 L17,5 Z" />
 </vector>
