@@ -66,6 +66,7 @@ sealed interface MainAction {
 
     data class ImportBatchConfig(val configText: String) : MainAction
     data class ShowPasteConfigDialog(val amnezia: Boolean) : MainAction
+    data object ShowMirrlyDialog : MainAction
 
     data object LocateHandled : MainAction
 }
