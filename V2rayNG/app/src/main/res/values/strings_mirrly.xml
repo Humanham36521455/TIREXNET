@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="title_mirrly_dialog">Mirrly TG Proxy</string>
+    <string name="mirrly_label_address">Address (e.g. 1.2.3.4)</string>
+    <string name="mirrly_label_port">Port</string>
+    <string name="mirrly_label_secret">Secret (optional, 32 chars)</string>
+    <string name="mirrly_button_connect">Connect</string>
+    <string name="mirrly_button_connecting">Connecting…</string>
+    <string name="mirrly_button_close">Close</string>
+    <string name="mirrly_toast_invalid_addr_port">Invalid address or port</string>
+    <string name="mirrly_toast_connect_started">Connection started</string>
+    <string name="mirrly_toast_connect_failed">Connection failed (code: %1$d)</string>
+</resources>

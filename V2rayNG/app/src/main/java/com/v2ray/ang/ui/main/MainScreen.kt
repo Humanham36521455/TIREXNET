@@ -68,6 +68,7 @@ fun MainScreen(
     var showRemoveConfirm by remember { mutableStateOf<String?>(null) }
     var pasteDialogAmnezia by remember { mutableStateOf<Boolean?>(null) }
     var pasteDialogText by remember { mutableStateOf("") }
+    var showMirrlyDialog by remember { mutableStateOf(false) }
 
     var shareTarget by remember { mutableStateOf<Triple<String, ProfileItem, Boolean>?>(null) }
     val removeServer: (String) -> Unit = { guid ->
@@ -75,11 +76,17 @@ fun MainScreen(
     }
 
     val handleAction: (MainAction) -> Unit = { action ->
-        if (action is MainAction.ShowPasteConfigDialog) {
-            pasteDialogText = ""
-            pasteDialogAmnezia = action.amnezia
-        } else {
-            onAction(action)
+        when (action) {
+            is MainAction.ShowPasteConfigDialog -> {
+                pasteDialogText = ""
+                pasteDialogAmnezia = action.amnezia
+            }
+            MainAction.ShowMirrlyDialog -> {
+                showMirrlyDialog = true
+            }
+            else -> {
+                onAction(action)
+            }
         }
     }
 
@@ -187,6 +194,17 @@ fun MainScreen(
                     Text(stringResource(R.string.action_cancel))
                 }
             }
+        )
+    }
+
+    if (showMirrlyDialog) {
+        MirrlyDialog(
+            initialAddress = "",
+            initialPort = null,
+            initialSecret = "",
+            onDismiss = { showMirrlyDialog = false },
+            onConnectStarted = null,
+            coroutineScope = scope
         )
     }
 
