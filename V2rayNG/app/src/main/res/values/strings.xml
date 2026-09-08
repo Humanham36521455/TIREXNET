@@ -34,7 +34,15 @@
     <string name="menu_item_import_config_local">Import from a local file</string>
     <string name="menu_item_import_config_wireguard_paste">Paste WireGuard config</string>
     <string name="menu_item_import_config_amnezia_paste">Paste AmneziaWG config</string>
-    <string name="menu_item_import_config_mirrly">Mirrly TG Proxy</string>
+    <string name="menu_item_mirrly_tg_proxy">Mirrly TG Proxy</string>
+    <string name="mirrly_worker_domain">Cloudflare Worker domain</string>
+    <string name="mirrly_port">Local port</string>
+    <string name="mirrly_start">Start</string>
+    <string name="mirrly_stop">Stop</string>
+    <string name="mirrly_open_telegram">Open in Telegram</string>
+    <string name="mirrly_copy_link">Copy link</string>
+    <string name="mirrly_status_running">Proxy is running on 127.0.0.1:%1$d</string>
+    <string name="mirrly_status_failed">Failed to start proxy (code %1$d)</string>
     <string name="menu_item_import_config_policy_group">Add [Policy group]</string>
     <string name="menu_item_import_config_proxy_chain">Add [Proxy chain]</string>
     <string name="menu_item_import_config_manually_vmess">Add [VMess]</string>
