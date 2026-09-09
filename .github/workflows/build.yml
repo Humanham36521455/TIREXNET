@@ -57,12 +57,12 @@ jobs:
         key: libhevtun-${{ runner.os }}-${{ env.NDK_HOME }}-${{ hashFiles(\'.git/modules/hev-socks5-tunnel/HEAD\') }}-${{ hashFiles(\'compile-hevtun.sh\') }}
 
     - name: Build libhevtun
-      if: steps.cache-libhevtun-restore.outputs.cache-hit != \'true\'
+      if: steps.cache-libhevtun-restore.outputs.cache-hit != 'true'
       run: |
         bash compile-hevtun.sh
     
     - name: Save libhevtun
-      if: steps.cache-libhevtun-restore.outputs.cache-hit != \'true\'
+      if: steps.cache-libhevtun-restore.outputs.cache-hit != 'true'
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/libs
