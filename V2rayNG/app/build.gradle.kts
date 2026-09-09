@@ -16,7 +16,7 @@ android {
         versionCode = 747
         versionName = "2.3.7"
 
-        val abiFilterList = (properties["ABI_FILTERS"] as? String)?.split(';')
+        val abiFilterList = (properties["ABI_FILTERS"] as? String)?.split(\';\')
         splits {
             abi {
                 isEnable = true
@@ -202,6 +202,9 @@ dependencies {
 
     // Native MTProto engine bridge (JNA)
     implementation("net.java.dev.jna:jna:5.14.0@aar")
+
+    // Premium animated flags - Lottie for Telegram premium flag effect
+    implementation("com.airbnb.android:lottie:6.1.0")
 
     // Testing Libraries
     testImplementation(libs.junit)
