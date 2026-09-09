@@ -20,15 +20,15 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        submodules: \'recursive\'
-        fetch-depth: \'0\'
+        submodules: recursive
+        fetch-depth: 0
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
       with:
         log-accepted-android-sdk-licenses: false
-        cmdline-tools-version: \'14742923\'
-        packages: \'platforms;android-37.0 build-tools;37.0.0 platform-tools\'
+        cmdline-tools-version: "14742923"
+        packages: "platforms;android-37.0 build-tools;37.0.0 platform-tools"
 
     - name: Install NDK
       run: |
@@ -83,15 +83,15 @@ jobs:
     - name: Download libv2ray
       uses: robinraju/release-downloader@v1.13
       with:
-        repository: \'2dust/AndroidLibXrayLite\'
+        repository: 2dust/AndroidLibXrayLite
         tag: ${{ env.CURRENT_TAG }}
-        fileName: \'libv2ray.aar\'
+        fileName: libv2ray.aar
         out-file-path: V2rayNG/app/libs/
 
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
-        distribution: \'temurin\'
+        distribution: temurin
         java-version: \'21\'
 
     - name: Decode Keystore
@@ -110,21 +110,21 @@ jobs:
     
     - name: Upload arm64-v8a APK
       uses: actions/upload-artifact@v4
-      if: ${{  success() }}
+      if: ${{ success() }}
       with:
         name: arm64-v8a
         path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*arm64-v8a*.apk
 
     - name: Upload armeabi-v7a APK
       uses: actions/upload-artifact@v4
-      if: ${{  success() }}
+      if: ${{ success() }}
       with:
         name: armeabi-v7a
         path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*armeabi-v7a*.apk
 
     - name: Upload x86 APK
       uses: actions/upload-artifact@v4
-      if: ${{  success() }}
+      if: ${{ success() }}
       with:
         name: x86-apk
         path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*x86*.apk
