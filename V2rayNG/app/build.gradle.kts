@@ -16,7 +16,7 @@ android {
         versionCode = 747
         versionName = "2.3.7"
 
-        val abiFilterList = (properties["ABI_FILTERS"] as? String)?.split(\';\')
+        val abiFilterList = (properties["ABI_FILTERS"] as? String)?.split(';')
         splits {
             abi {
                 isEnable = true
