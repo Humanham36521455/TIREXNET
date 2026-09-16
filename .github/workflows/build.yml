@@ -50,19 +50,19 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/libs
-        key: libhevtun-${{ runner.os }}-${{ env.NDK_HOME }}-${{ hashFiles(".git/modules/hev-socks5-tunnel/HEAD") }}-${{ hashFiles("compile-hevtun.sh") }}
+        key: libhevtun-${{ runner.os }}-${{ env.NDK_HOME }}-${{ hashFiles('.git/modules/hev-socks5-tunnel/HEAD') }}-${{ hashFiles('compile-hevtun.sh') }}
 
     - name: Build libhevtun
-      if: steps.cache-libhevtun-restore.outputs.cache-hit != "true"
+      if: steps.cache-libhevtun-restore.outputs.cache-hit != 'true'
       run: |
         bash compile-hevtun.sh
     
     - name: Save libhevtun
-      if: steps.cache-libhevtun-restore.outputs.cache-hit != "true"
+      if: steps.cache-libhevtun-restore.outputs.cache-hit != 'true'
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/libs
-        key: libhevtun-${{ runner.os }}-${{ env.NDK_HOME }}-${{ hashFiles(".git/modules/hev-socks5-tunnel/HEAD") }}-${{ hashFiles("compile-hevtun.sh") }}
+        key: libhevtun-${{ runner.os }}-${{ env.NDK_HOME }}-${{ hashFiles('.git/modules/hev-socks5-tunnel/HEAD') }}-${{ hashFiles('compile-hevtun.sh') }}
 
     - name: Copy libhevtun
       run: |
@@ -135,7 +135,7 @@ jobs:
   sign-and-release:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == "workflow_dispatch" && inputs.release_tag != ""
+    if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
     steps:
       - name: Download APK artifacts
         uses: actions/download-artifact@v4
@@ -144,7 +144,7 @@ jobs:
       - name: Sign APK files
         run: |
           printf "%s" "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-          KEY=$(gpg --list-secret-keys --with-colons | awk -F: "/^fpr:/ {print \$10; exit}")
+          KEY=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/ {print $10; exit}')
           mkdir -p release-files
           find release -type f -name "*.apk" | while read apk; do
             cp "$apk" release-files/
