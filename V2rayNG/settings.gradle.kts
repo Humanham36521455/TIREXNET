@@ -1,6 +1,7 @@
 pluginManagement {
     repositories {
-        google {
+        maven {
+            url = uri("https://redirector.gvt1.com/edgedl/dl/android/maven2")
             content {
                 includeGroupByRegex("com\\.android.*")
                 includeGroupByRegex("com\\.google.*")
@@ -14,7 +15,7 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        google()
+        maven { url = uri("https://redirector.gvt1.com/edgedl/dl/android/maven2") }
         mavenCentral()
         maven { url = uri("https://jitpack.io") }
     }

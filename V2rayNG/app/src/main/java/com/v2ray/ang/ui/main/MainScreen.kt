@@ -42,10 +42,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Intent
 import android.net.Uri
 import com.v2ray.ang.R
+import com.v2ray.ang.AppConfig
 import com.v2ray.ang.dto.entities.ProfileItem
+import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.mtproto.NativeProxy
 import com.v2ray.ang.ui.compose.LocalDarkTheme
 import com.v2ray.ang.ui.compose.QRCodeDialog
+import com.v2ray.ang.ui.dns.DnsChangerActivity
+import com.v2ray.ang.ui.dns.DnsPingActivity
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
@@ -59,7 +63,7 @@ fun MainScreen(
     val groups = uiState.groups
     val isLoading by mainViewModel.isLoading.collectAsStateWithLifecycle()
     val isRunning = uiState.isRunning
-    val displayText = mainViewModel.formatStatus(uiState.status)
+    val displayText = remember(uiState.status) { mainViewModel.formatStatus(uiState.status) }
     val selectedGuid = uiState.selectedGuid
     val doubleColumnDisplay = uiState.doubleColumnDisplay
     val confirmRemove = uiState.confirmRemove
@@ -74,12 +78,12 @@ fun MainScreen(
     var showDelDuplicateConfirm by remember { mutableStateOf(false) }
     var showDelInvalidConfirm by remember { mutableStateOf(false) }
     var showRemoveConfirm by remember { mutableStateOf<String?>(null) }
-    var pasteDialogAmnezia by remember { mutableStateOf<Boolean?>(null) }
+    var pasteDialogMode by remember { mutableStateOf<String?>(null) }
     var pasteDialogText by remember { mutableStateOf("") }
 
     var showMirrlyDialog by remember { mutableStateOf(false) }
-    var mirrlyDomain by remember { mutableStateOf("mirrly-tg-proxy-worker.brawny-singer.workers.dev") }
-    var mirrlyPort by remember { mutableStateOf("1443") }
+    var mirrlyDomain by remember { mutableStateOf(AppConfig.MIRRLY_DEFAULT_DOMAIN) }
+    var mirrlyPort by remember { mutableStateOf(AppConfig.MIRRLY_DEFAULT_PORT.toString()) }
     var mirrlyRunning by remember { mutableStateOf(false) }
     var mirrlyStatus by remember { mutableStateOf("") }
     var mirrlyLink by remember { mutableStateOf("") }
@@ -95,9 +99,23 @@ fun MainScreen(
         when (action) {
             is MainAction.ShowPasteConfigDialog -> {
                 pasteDialogText = ""
-                pasteDialogAmnezia = action.amnezia
+                pasteDialogMode = action.mode
             }
             is MainAction.ShowMirrlyDialog -> {
+                mirrlyDomain = MmkvManager.decodeSettingsString(AppConfig.PREF_MIRRLY_DOMAIN)
+                    ?: AppConfig.MIRRLY_DEFAULT_DOMAIN
+                mirrlyPort = MmkvManager.decodeSettingsString(AppConfig.PREF_MIRRLY_PORT)
+                    ?: AppConfig.MIRRLY_DEFAULT_PORT.toString()
+                mirrlyRunning = NativeProxy.isStarted
+                if (NativeProxy.isStarted) {
+                    mirrlyStatus = context.getString(
+                        R.string.mirrly_status_running,
+                        MmkvManager.decodeSettingsString(AppConfig.PREF_MIRRLY_PORT)
+                            ?.toIntOrNull() ?: AppConfig.MIRRLY_DEFAULT_PORT
+                    )
+                } else {
+                    mirrlyStatus = ""
+                }
                 showMirrlyDialog = true
             }
             else -> onAction(action)
@@ -170,15 +188,18 @@ fun MainScreen(
         QRCodeDialog(bitmap = shareQRCodeBitmap, onDismiss = { onAction(MainAction.DismissQRCodeDialog) })
     }
 
-    val amneziaFlag = pasteDialogAmnezia
-    if (amneziaFlag != null) {
+    val pasteMode = pasteDialogMode
+    if (pasteMode != null) {
         AlertDialog(
-            onDismissRequest = { pasteDialogAmnezia = null },
+            onDismissRequest = { pasteDialogMode = null },
             title = {
                 Text(
                     stringResource(
-                        if (amneziaFlag) R.string.menu_item_import_config_amnezia_paste
-                        else R.string.menu_item_import_config_wireguard_paste
+                        when (pasteMode) {
+                            "amnezia" -> R.string.menu_item_import_config_amnezia_paste
+                            "slipnet" -> R.string.menu_item_import_config_slipnet_paste
+                            else -> R.string.menu_item_import_config_wireguard_paste
+                        }
                     )
                 )
             },
@@ -189,13 +210,21 @@ fun MainScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(220.dp),
-                    placeholder = { Text("[Interface]\nPrivateKey = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = ...") }
+                    placeholder = {
+                        Text(
+                            if (pasteMode == "slipnet") {
+                                stringResource(R.string.paste_hint_slipnet)
+                            } else {
+                                stringResource(R.string.paste_hint_wireguard)
+                            }
+                        )
+                    }
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
                     val text = pasteDialogText
-                    pasteDialogAmnezia = null
+                    pasteDialogMode = null
                     if (text.isNotBlank()) {
                         onAction(MainAction.ImportBatchConfig(text))
                     }
@@ -204,7 +233,7 @@ fun MainScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pasteDialogAmnezia = null }) {
+                TextButton(onClick = { pasteDialogMode = null }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             }
@@ -219,14 +248,20 @@ fun MainScreen(
                 Column {
                     OutlinedTextField(
                         value = mirrlyDomain,
-                        onValueChange = { mirrlyDomain = it },
+                        onValueChange = {
+                            mirrlyDomain = it
+                            MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_DOMAIN, it)
+                        },
                         label = { Text(stringResource(R.string.mirrly_worker_domain)) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = mirrlyPort,
-                        onValueChange = { mirrlyPort = it.filter { c -> c.isDigit() } },
+                        onValueChange = {
+                            mirrlyPort = it.filter { c -> c.isDigit() }
+                            MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_PORT, mirrlyPort)
+                        },
                         label = { Text(stringResource(R.string.mirrly_port)) },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -251,17 +286,16 @@ fun MainScreen(
                     }
                 } else {
                     TextButton(onClick = {
-                        val port = mirrlyPort.toIntOrNull() ?: 1443
-                        NativeProxy.setCfProxyCacheDir(context.cacheDir.absolutePath)
-                        NativeProxy.setCfProxyConfig(true, mirrlyDomain)
-                        val code = NativeProxy.startProxy("127.0.0.1", port, "", "", 0)
-                        if (code == 0) {
-                            mirrlyRunning = true
-                            mirrlyStatus = context.getString(R.string.mirrly_status_running, port)
-                            val secret = NativeProxy.getSecretWithPrefix().orEmpty()
-                            mirrlyLink = "tg://proxy?server=127.0.0.1&port=$port&secret=$secret"
-                        } else {
-                            mirrlyStatus = context.getString(R.string.mirrly_status_failed, code)
+                        val port = mirrlyPort.toIntOrNull() ?: AppConfig.MIRRLY_DEFAULT_PORT
+                        NativeProxy.start(mirrlyDomain, port, context) { code ->
+                            if (code == 0) {
+                                mirrlyRunning = true
+                                mirrlyStatus = context.getString(R.string.mirrly_status_running, port)
+                                val secret = NativeProxy.getSecretWithPrefix().orEmpty()
+                                mirrlyLink = "tg://proxy?server=127.0.0.1&port=$port&secret=$secret"
+                            } else {
+                                mirrlyStatus = context.getString(R.string.mirrly_status_failed, code)
+                            }
                         }
                     }) {
                         Text(stringResource(R.string.mirrly_start))
@@ -271,10 +305,11 @@ fun MainScreen(
             dismissButton = {
                 if (mirrlyRunning) {
                     TextButton(onClick = {
-                        NativeProxy.stopProxy()
-                        mirrlyRunning = false
-                        mirrlyStatus = ""
-                        mirrlyLink = ""
+                        NativeProxy.stop(context, clearEnabled = true) {
+                            mirrlyRunning = false
+                            mirrlyStatus = ""
+                            mirrlyLink = ""
+                        }
                     }) {
                         Text(stringResource(R.string.mirrly_stop))
                     }
@@ -330,6 +365,12 @@ fun MainScreen(
                             MainMoreMenuAction.TestAll -> onAction(MainAction.TestAllServers)
                             MainMoreMenuAction.TestAllRealPing -> onAction(MainAction.TestRealAllServers)
                             MainMoreMenuAction.UpdateSubscriptions -> onAction(MainAction.UpdateSubscriptions)
+                            MainMoreMenuAction.DnsPingChecker -> run {
+                                context.startActivity(Intent(context, DnsPingActivity::class.java))
+                            }
+                            MainMoreMenuAction.DnsChanger -> run {
+                                context.startActivity(Intent(context, DnsChangerActivity::class.java))
+                            }
                         }
                     }
                 )

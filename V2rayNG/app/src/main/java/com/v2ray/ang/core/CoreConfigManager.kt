@@ -33,6 +33,15 @@ object CoreConfigManager {
      */
     fun getV2rayConfig(context: Context, guid: String): ConfigResult {
         try {
+            val profile = MmkvManager.decodeServerConfig(guid)
+                ?: return ConfigResult(
+                    status = false,
+                    guid = guid,
+                    errorMessage = "Failed to build config context, profile not found"
+                )
+            if (profile.configType == EConfigType.DNS) {
+                return buildDnsOnlyConfig(context, guid, profile)
+            }
             val configContext = CoreConfigContextBuilder.build(context, guid)
                 ?: return ConfigResult(
                     status = false,
@@ -60,6 +69,19 @@ object CoreConfigManager {
      */
     fun getV2rayConfig4Speedtest(context: Context, guid: String): ConfigResult {
         try {
+            val profile = MmkvManager.decodeServerConfig(guid)
+                ?: return ConfigResult(
+                    status = false,
+                    guid = guid,
+                    errorMessage = "Failed to build config context, profile not found"
+                )
+            if (profile.configType == EConfigType.DNS) {
+                return ConfigResult(
+                    status = false,
+                    guid = guid,
+                    errorMessage = "DNS profiles are not speed-testable"
+                )
+            }
             val configContext = CoreConfigContextBuilder.build(context, guid)
                 ?: return ConfigResult(
                     status = false,
@@ -163,6 +185,99 @@ object CoreConfigManager {
         }
 
         return JsonUtil.toJsonPretty(json)?.let { ConfigResult(true, configContext.guid, it) } ?: result
+    }
+
+    /**
+     * Build the runtime configuration for a DNS-only profile in VPN mode.
+     *
+     * A DNS profile overrides system DNS through the VPN interface; there is no
+     * remote proxy. The core still owns the TUN so Android resolver traffic is
+     * answered by the configured servers. Non-DNS traffic routes through a direct
+     * (freedom) outbound, which is the honest runtime behaviour of a DNS-override
+     * profile.
+     *
+     * `dns://` profiles require VPN mode: proxy-only and root modes cannot attach
+     * system DNS servers to a tun interface they do not own, so they return an
+     * explicit error instead of a config that would silently leak. To keep the
+     * profile usable, its resolver addresses are also applied through
+     * [com.v2ray.ang.handler.DnsManager] when the tunnel is started, matching the
+     * DNS Changer behaviour in [com.v2ray.ang.service.CoreVpnService].
+     */
+    private fun buildDnsOnlyConfig(context: Context, guid: String, profile: ProfileItem): ConfigResult {
+        if (!SettingsManager.isVpnMode()) {
+            return ConfigResult(
+                status = false,
+                guid = guid,
+                errorMessage = "DNS profiles require VPN mode"
+            )
+        }
+
+        val servers = (profile.dnsServers ?: "")
+            .split(',')
+            .map { it.trim() }
+            .filter { Utils.isPureIpAddress(it) }
+        if (servers.isEmpty()) {
+            return ConfigResult(
+                status = false,
+                guid = guid,
+                errorMessage = "No valid DNS server addresses in profile"
+            )
+        }
+
+        val metricsEnabled = MmkvManager.decodeSettingsBool(AppConfig.PREF_SPEED_ENABLED) == true
+        val v2rayConfig = initV2rayConfig(
+            CoreConfigContext(context = context, guid = guid)
+        )
+        v2rayConfig.log.loglevel = MmkvManager.decodeSettingsString(AppConfig.PREF_LOGLEVEL) ?: "warning"
+        v2rayConfig.remarks = profile.remarks
+        configureInbounds(v2rayConfig)
+
+        // First outbound is the traffic sink for unmatched routing; it must be a
+        // direct (freedom) exit, never the placeholder template server.
+        if (v2rayConfig.outbounds.isNotEmpty()) {
+            v2rayConfig.outbounds.removeAt(0)
+        }
+        v2rayConfig.outbounds.add(
+            0,
+            V2rayConfig.OutboundBean(
+                protocol = "freedom",
+                tag = AppConfig.TAG_PROXY,
+                streamSettings = V2rayConfig.OutboundBean.StreamSettingsBean(
+                    network = "tcp",
+                    sockopt = V2rayConfig.OutboundBean.StreamSettingsBean.SockoptBean(
+                        domainStrategy = "UseIP"
+                    )
+                ),
+            )
+        )
+        v2rayConfig.outbounds.add(
+            V2rayConfig.OutboundBean(
+                protocol = "dns",
+                tag = "dns-out",
+                settings = null,
+                streamSettings = null,
+                mux = null
+            )
+        )
+
+        // DNS block: resolve through the profile resolvers only.
+        v2rayConfig.dns = V2rayConfig.DnsBean().apply {
+            servers = ArrayList<Any>().apply { servers.forEach { add(it) } }
+        }
+
+        // Route DNS (port 53) into the dns-out module; everything else goes direct.
+        v2rayConfig.routing.rules.clear()
+        v2rayConfig.routing.rules.add(
+            0,
+            V2rayConfig.RoutingBean.RulesBean(
+                inboundTag = arrayListOf("socks", "tun"),
+                outboundTag = "dns-out",
+                port = "53",
+            )
+        )
+
+        applySpeedDisabled(v2rayConfig)
+        return toConfigResult(CoreConfigContext(context = context, guid = guid), v2rayConfig)
     }
 
     /**

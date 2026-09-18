@@ -1,0 +1,2356 @@
+diff --git a/V2rayNG/app/build.gradle.kts b/V2rayNG/app/build.gradle.kts
+index 89f39f4f..7ba3e260 100644
+--- a/V2rayNG/app/build.gradle.kts
++++ b/V2rayNG/app/build.gradle.kts
+@@ -15,6 +15,7 @@ android {
+         targetSdk = 37
+         versionCode = 747
+         versionName = "2.3.7"
++        buildToolsVersion = "37.0.0"
+ 
+         val abiFilterList = (properties["ABI_FILTERS"] as? String)?.split(';')
+         splits {
+diff --git a/V2rayNG/app/src/main/AndroidManifest.xml b/V2rayNG/app/src/main/AndroidManifest.xml
+index c8304c4c..8c60af82 100644
+--- a/V2rayNG/app/src/main/AndroidManifest.xml
++++ b/V2rayNG/app/src/main/AndroidManifest.xml
+@@ -107,6 +107,18 @@
+             android:name=".ui.server.ServerWireguardActivity"
+             android:exported="false"
+             android:windowSoftInputMode="stateUnchanged|adjustResize" />
++        <activity
++            android:name=".ui.server.ServerAmneziaActivity"
++            android:exported="false"
++            android:windowSoftInputMode="stateUnchanged|adjustResize" />
++        <activity
++            android:name=".ui.server.ServerPsiphonActivity"
++            android:exported="false"
++            android:windowSoftInputMode="stateUnchanged|adjustResize" />
++        <activity
++            android:name=".ui.server.ServerSlipNetActivity"
++            android:exported="false"
++            android:windowSoftInputMode="stateUnchanged|adjustResize" />
+         <activity
+             android:name=".ui.server.ServerHysteria2Activity"
+             android:exported="false"
+@@ -126,6 +138,14 @@
+         <activity
+             android:name=".ui.settings.SettingsActivity"
+             android:exported="false" />
++        <activity
++            android:name=".ui.dns.DnsChangerActivity"
++            android:exported="false"
++            android:windowSoftInputMode="stateUnchanged|adjustResize" />
++        <activity
++            android:name=".ui.dns.DnsPingActivity"
++            android:exported="false"
++            android:windowSoftInputMode="stateUnchanged|adjustResize" />
+         <activity
+             android:name=".ui.perappproxy.PerAppProxyActivity"
+             android:exported="false" />
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/AppConfig.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/AppConfig.kt
+index 686792db..91dc2d94 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/AppConfig.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/AppConfig.kt
+@@ -90,6 +90,18 @@ object AppConfig {
+     const val PREF_AUTO_SORT_AFTER_TEST = "pref_auto_sort_after_test"
+     const val PREF_REAL_PING_CONCURRENCY = "pref_real_ping_concurrency"
+ 
++    /** DNS Changer (custom DNS profiles applied to the VPN interface). */
++    const val PREF_DNS_CHANGER_CONFIGS = "pref_dns_changer_configs"
++    const val PREF_DNS_CHANGER_ACTIVE_ID = "pref_dns_changer_active_id"
++    const val PREF_DNS_CHANGER_ACTIVE_SERVERS = "pref_dns_changer_active_servers"
++
++    /** Mirrly TG proxy settings. */
++    const val PREF_MIRRLY_ENABLED = "pref_mirrly_enabled"
++    const val PREF_MIRRLY_DOMAIN = "pref_mirrly_domain"
++    const val PREF_MIRRLY_PORT = "pref_mirrly_port"
++    const val MIRRLY_DEFAULT_DOMAIN = "mirrly-tg-proxy-worker.brawny-singer.workers.dev"
++    const val MIRRLY_DEFAULT_PORT = 1443
++
+     /** Cache keys. */
+     const val CACHE_SUBSCRIPTION_ID = "cache_subscription_id"
+ 
+@@ -213,6 +225,11 @@ object AppConfig {
+     const val VLESS = "vless://"
+     const val TROJAN = "trojan://"
+     const val WIREGUARD = "wireguard://"
++    const val AMNEZIA = "amnezia://"
++    const val V2RAYS_AMNEZIA_VPN = "vpn://"
++    const val PSIPHON = "psiphon://"
++    const val SLIPNET = "slipnet://"
++    const val DNS = "dns://"
+     const val TUIC = "tuic://"
+     const val HYSTERIA = "hysteria://"
+     const val HYSTERIA2 = "hysteria2://"
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/core/CoreConfigManager.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/core/CoreConfigManager.kt
+index b2e08d31..ee4d46d0 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/core/CoreConfigManager.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/core/CoreConfigManager.kt
+@@ -33,6 +33,15 @@ object CoreConfigManager {
+      */
+     fun getV2rayConfig(context: Context, guid: String): ConfigResult {
+         try {
++            val profile = MmkvManager.decodeServerConfig(guid)
++                ?: return ConfigResult(
++                    status = false,
++                    guid = guid,
++                    errorMessage = "Failed to build config context, profile not found"
++                )
++            if (profile.configType == EConfigType.DNS) {
++                return buildDnsOnlyConfig(context, guid, profile)
++            }
+             val configContext = CoreConfigContextBuilder.build(context, guid)
+                 ?: return ConfigResult(
+                     status = false,
+@@ -60,6 +69,19 @@ object CoreConfigManager {
+      */
+     fun getV2rayConfig4Speedtest(context: Context, guid: String): ConfigResult {
+         try {
++            val profile = MmkvManager.decodeServerConfig(guid)
++                ?: return ConfigResult(
++                    status = false,
++                    guid = guid,
++                    errorMessage = "Failed to build config context, profile not found"
++                )
++            if (profile.configType == EConfigType.DNS) {
++                return ConfigResult(
++                    status = false,
++                    guid = guid,
++                    errorMessage = "DNS profiles are not speed-testable"
++                )
++            }
+             val configContext = CoreConfigContextBuilder.build(context, guid)
+                 ?: return ConfigResult(
+                     status = false,
+@@ -165,6 +187,99 @@ object CoreConfigManager {
+         return JsonUtil.toJsonPretty(json)?.let { ConfigResult(true, configContext.guid, it) } ?: result
+     }
+ 
++    /**
++     * Build the runtime configuration for a DNS-only profile in VPN mode.
++     *
++     * A DNS profile overrides system DNS through the VPN interface; there is no
++     * remote proxy. The core still owns the TUN so Android resolver traffic is
++     * answered by the configured servers. Non-DNS traffic routes through a direct
++     * (freedom) outbound, which is the honest runtime behaviour of a DNS-override
++     * profile.
++     *
++     * `dns://` profiles require VPN mode: proxy-only and root modes cannot attach
++     * system DNS servers to a tun interface they do not own, so they return an
++     * explicit error instead of a config that would silently leak. To keep the
++     * profile usable, its resolver addresses are also applied through
++     * [com.v2ray.ang.handler.DnsManager] when the tunnel is started, matching the
++     * DNS Changer behaviour in [com.v2ray.ang.service.CoreVpnService].
++     */
++    private fun buildDnsOnlyConfig(context: Context, guid: String, profile: ProfileItem): ConfigResult {
++        if (!SettingsManager.isVpnMode()) {
++            return ConfigResult(
++                status = false,
++                guid = guid,
++                errorMessage = "DNS profiles require VPN mode"
++            )
++        }
++
++        val servers = (profile.dnsServers ?: "")
++            .split(',')
++            .map { it.trim() }
++            .filter { Utils.isPureIpAddress(it) }
++        if (servers.isEmpty()) {
++            return ConfigResult(
++                status = false,
++                guid = guid,
++                errorMessage = "No valid DNS server addresses in profile"
++            )
++        }
++
++        val metricsEnabled = MmkvManager.decodeSettingsBool(AppConfig.PREF_SPEED_ENABLED) == true
++        val v2rayConfig = initV2rayConfig(
++            CoreConfigContext(context = context, guid = guid)
++        )
++        v2rayConfig.log.loglevel = MmkvManager.decodeSettingsString(AppConfig.PREF_LOGLEVEL) ?: "warning"
++        v2rayConfig.remarks = profile.remarks
++        configureInbounds(v2rayConfig)
++
++        // First outbound is the traffic sink for unmatched routing; it must be a
++        // direct (freedom) exit, never the placeholder template server.
++        if (v2rayConfig.outbounds.isNotEmpty()) {
++            v2rayConfig.outbounds.removeAt(0)
++        }
++        v2rayConfig.outbounds.add(
++            0,
++            V2rayConfig.OutboundBean(
++                protocol = "freedom",
++                tag = AppConfig.TAG_PROXY,
++                streamSettings = V2rayConfig.OutboundBean.StreamSettingsBean(
++                    network = "tcp",
++                    sockopt = V2rayConfig.OutboundBean.StreamSettingsBean.SockoptBean(
++                        domainStrategy = "UseIP"
++                    )
++                ),
++            )
++        )
++        v2rayConfig.outbounds.add(
++            V2rayConfig.OutboundBean(
++                protocol = "dns",
++                tag = "dns-out",
++                settings = null,
++                streamSettings = null,
++                mux = null
++            )
++        )
++
++        // DNS block: resolve through the profile resolvers only.
++        v2rayConfig.dns = V2rayConfig.DnsBean().apply {
++            servers = ArrayList<Any>().apply { servers.forEach { add(it) } }
++        }
++
++        // Route DNS (port 53) into the dns-out module; everything else goes direct.
++        v2rayConfig.routing.rules.clear()
++        v2rayConfig.routing.rules.add(
++            0,
++            V2rayConfig.RoutingBean.RulesBean(
++                inboundTag = arrayListOf("socks", "tun"),
++                outboundTag = "dns-out",
++                port = "53",
++            )
++        )
++
++        applySpeedDisabled(v2rayConfig)
++        return toConfigResult(CoreConfigContext(context = context, guid = guid), v2rayConfig)
++    }
++
+     /**
+      * Build one unified configuration for every non-custom profile type.
+      *
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/core/CoreOutboundBuilder.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/core/CoreOutboundBuilder.kt
+index aa951ff7..8c0337e5 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/core/CoreOutboundBuilder.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/core/CoreOutboundBuilder.kt
+@@ -30,6 +30,7 @@ object CoreOutboundBuilder {
+             EConfigType.VLESS -> toOutboundVless(profileItem)
+             EConfigType.TROJAN -> toOutboundTrojan(profileItem)
+             EConfigType.WIREGUARD -> toOutboundWireguard(profileItem)
++            EConfigType.AMNEZIA_WG -> toOutboundAmnezia(profileItem)
+             EConfigType.HYSTERIA2 -> toOutboundHysteria2(profileItem)
+             EConfigType.HTTP -> toOutboundHttp(profileItem)
+             else -> null
+@@ -51,6 +52,7 @@ object CoreOutboundBuilder {
+                 || protocol.equals(EConfigType.HTTP.name, true)
+                 || protocol.equals(EConfigType.TROJAN.name, true)
+                 || protocol.equals(EConfigType.WIREGUARD.name, true)
++                || protocol.equals(EConfigType.AMNEZIA_WG.name, true)
+                 || protocol.equals(EConfigType.HYSTERIA2.name, true)
+                 || protocol.equals(EConfigType.HYSTERIA.name, true)
+             ) {
+@@ -93,8 +95,9 @@ object CoreOutboundBuilder {
+                 streamSettings = OutboundBean.StreamSettingsBean()
+             )
+ 
+-            EConfigType.WIREGUARD -> OutboundBean(
+-                protocol = configType.name.lowercase(),
++            EConfigType.WIREGUARD,
++            EConfigType.AMNEZIA_WG -> OutboundBean(
++                protocol = EConfigType.WIREGUARD.name.lowercase(),
+                 settings = OutboundBean.OutSettingsBean(
+                     secretKey = "",
+                     peers = listOf(OutboundBean.OutSettingsBean.WireGuardBean())
+@@ -143,7 +146,10 @@ object CoreOutboundBuilder {
+             settings.address = getServerAddress(profileItem)
+             settings.port = profileItem.serverPort.orEmpty().toInt()
+             settings.id = profileItem.password.orEmpty()
+-            settings.encryption = profileItem.method
++            // The Xray VLESS outbound loader rejects an empty encryption value
++            // ("please add/set encryption:none for every user") and the app only
++            // ever uses plain VLESS encryption, so map missing/blank to "none".
++            settings.encryption = profileItem.method?.takeIf { it.isNotBlank() } ?: "none"
+             settings.flow = profileItem.flow
+             settings.level = AppConfig.DEFAULT_LEVEL
+         }
+@@ -274,6 +280,53 @@ object CoreOutboundBuilder {
+         return outboundBean
+     }
+ 
++    /**
++     * Builds the outbound for an AmneziaWG profile.
++     *
++     * Xray-core implements the standard WireGuard protocol. When the server uses
++     * AmneziaWG packet-junk obfuscation (Jc > 0), the handshake will fail, and
++     * the connection reports the real core error. Configs with obfuscation
++     * disabled (Jc <= 0) connect like plain WireGuard.
++     */
++    private fun toOutboundAmnezia(profileItem: ProfileItem): OutboundBean? {
++        val outboundBean = createInitOutbound(EConfigType.AMNEZIA_WG)
++
++        val rawAddresses = profileItem.localAddress
++            ?.split(",")
++            ?.map { it.trim() }
++            ?.filter { it.isNotEmpty() }
++            ?.ifEmpty { null }
++            ?: listOf(AppConfig.WIREGUARD_LOCAL_ADDRESS_V4)
++
++        val addresses = if (MmkvManager.decodeSettingsBool(AppConfig.PREF_IPV6_ENABLED) == true) {
++            rawAddresses
++        } else {
++            val ipv4Addresses = rawAddresses.filter { !it.contains(":") }
++            ipv4Addresses.ifEmpty { listOf(AppConfig.WIREGUARD_LOCAL_ADDRESS_V4) }
++        }
++
++        outboundBean?.settings?.let { wireguard ->
++            wireguard.secretKey = profileItem.secretKey
++            wireguard.address = addresses
++            wireguard.peers?.firstOrNull()?.let { peer ->
++                peer.publicKey = profileItem.publicKey.orEmpty()
++                peer.preSharedKey = profileItem.preSharedKey?.nullIfBlank()
++                peer.endpoint = Utils.getIpv6Address(profileItem.server) + ":${profileItem.serverPort}"
++            }
++            wireguard.mtu = profileItem.mtu
++            wireguard.reserved = profileItem.reserved?.takeIf { it.isNotBlank() }?.split(",")?.filter { it.isNotBlank() }?.map { it.trim().toInt() }
++        }
++
++        if (!profileItem.finalMask.isNullOrBlank()) {
++            outboundBean?.streamSettings = OutboundBean.StreamSettingsBean()
++            outboundBean?.streamSettings?.let {
++                updateOutboundFinalMask(it, profileItem)
++                it.network = null
++            }
++        }
++        return outboundBean
++    }
++
+     private fun toOutboundHysteria2(profileItem: ProfileItem): OutboundBean? {
+         val outboundBean = createInitOutbound(EConfigType.HYSTERIA2) ?: return null
+         profileItem.network = NetworkType.HYSTERIA.type
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/core/LauncherManager.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/core/LauncherManager.kt
+index 1ca5477a..13e23ca4 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/core/LauncherManager.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/core/LauncherManager.kt
+@@ -9,6 +9,7 @@ import com.v2ray.ang.R
+ import com.v2ray.ang.extension.isComplexType
+ import com.v2ray.ang.extension.toast
+ import com.v2ray.ang.extension.toastError
++import com.v2ray.ang.enums.EConfigType
+ import com.v2ray.ang.handler.MmkvManager
+ import com.v2ray.ang.handler.SettingsManager
+ import com.v2ray.ang.helper.MessageHelper
+@@ -85,7 +86,31 @@ object LauncherManager {
+                 error(context.getString(R.string.toast_config_file_invalid))
+             }
+ 
++        // Engine capability gate: a supported profile whose runtime engine is not
++        // bundled must report the exact missing dependency, never a misleading
++        // "invalid config" from the later address-validity check.
++        val capability = com.v2ray.ang.engine.EngineRegistry.capabilityFor(config)
++        when {
++            capability.engine == com.v2ray.ang.engine.EngineId.SLIPNET -> {
++                LogUtil.e(AppConfig.TAG, "LauncherManager: SlipNet transports are not supported by the bundled core")
++                error(context.getString(R.string.toast_slipnet_unsupported))
++            }
++
++            capability.engine == com.v2ray.ang.engine.EngineId.PSIPHON -> {
++                LogUtil.e(AppConfig.TAG, "LauncherManager: Psiphon protocol is not supported by the bundled core")
++                error(context.getString(R.string.toast_psiphon_unsupported))
++            }
++
++            capability.engine == com.v2ray.ang.engine.EngineId.AMNEZIA_WG && config.hasAmneziaObfuscation -> {
++                LogUtil.e(AppConfig.TAG, "LauncherManager: AmneziaWG obfuscation is not supported by the bundled core")
++                error(context.getString(R.string.toast_amnezia_unsupported))
++            }
++        }
++
+         if (!config.configType.isComplexType()
++            && config.configType != EConfigType.DNS
++            && config.configType != EConfigType.SLIPNET
++            && config.configType != EConfigType.PSIPHON
+             && !Utils.isValidUrl(config.server)
+             && !Utils.isPureIpAddress(config.server.orEmpty())
+         ) {
+@@ -93,8 +118,46 @@ object LauncherManager {
+             error(context.getString(R.string.toast_config_file_invalid))
+         }
+ 
++        if (config.configType == EConfigType.DNS && !SettingsManager.isVpnMode()) {
++            LogUtil.e(AppConfig.TAG, "LauncherManager: DNS profiles require VPN mode")
++            error(context.getString(R.string.toast_dns_requires_vpn))
++        }
++
+         SettingsManager.refreshRuntimeSocksPort()
+ 
++        // DNS profiles apply their resolvers to the tun through the DNS Changer
++        // active-servers slot, so CoreVpnService.configureNetworkSettings() hands
++        // them to the platform resolver alongside the runtime DNS block.
++        if (config.configType == EConfigType.DNS) {
++            val servers = (config.dnsServers ?: "")
++                .split(',')
++                .map { it.trim() }
++                .filter { Utils.isPureIpAddress(it) }
++            if (servers.isNotEmpty()) {
++                val dnsProfile = com.v2ray.ang.handler.DnsManager.getProfiles()
++                    .firstOrNull { it.name == config.remarks }
++                    ?: com.v2ray.ang.handler.DnsProfile(
++                        id = "",
++                        name = config.remarks.orEmpty().ifBlank { "DNS profile" },
++                        ipV4Primary = servers.getOrNull(0).orEmpty()
++                    )
++                com.v2ray.ang.handler.DnsManager.setActive(
++                    com.v2ray.ang.handler.DnsManager.upsert(
++                        dnsProfile.copy(
++                            ipV4Primary = servers.getOrNull(0).orEmpty(),
++                            ipV4Secondary = servers.getOrNull(1).orEmpty(),
++                            ipV6Primary = servers.getOrNull(2).orEmpty(),
++                            ipV6Secondary = servers.getOrNull(3).orEmpty()
++                        )
++                    )
++                )
++            }
++        }
++
++        // Track the launch attempt in the engine state machine. The capability gate
++        // above guarantees this profile can actually run.
++        com.v2ray.ang.engine.ConnectionManager.onLaunchAttempt(config)
++
+         if (config.insecure == true && config.pinnedCA256.isNullOrEmpty()) {
+             context.toastError(R.string.toast_allow_insecure_deprecated)
+             Utils.setClipboard(context, context.getString(R.string.toast_allow_insecure_deprecated))
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/dto/entities/ProfileItem.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/dto/entities/ProfileItem.kt
+index 9b2af45e..2478b126 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/dto/entities/ProfileItem.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/dto/entities/ProfileItem.kt
+@@ -57,6 +57,34 @@ data class ProfileItem(
+     var reserved: String? = null,
+     var mtu: Int? = null,
+ 
++    // AmneziaWG junk/obfuscation parameters (persisted for round-trip export).
++    var awgJunkPacketCount: Int? = null,
++    var awgJunkPacketMinSize: Int? = null,
++    var awgJunkPacketMaxSize: Int? = null,
++    var awgInitPacketJunkSize: Int? = null,
++    var awgResponsePacketJunkSize: Int? = null,
++    var awgInitPacketMagicHeader: String? = null,
++    var awgResponsePacketMagicHeader: String? = null,
++    var awgUnderloadPacketMagicHeader: String? = null,
++
++    // Psiphon server entry
++    var psiphonRegion: String? = null,
++
++    // SlipNet profile (decentralized WireGuard/DNS-tunnel network). The raw
++    // slipnet:// link is preserved for lossless round-trip export; the remaining
++    // fields are the parsed subset shown in the server list and editor.
++    var slipNetVersion: String? = null,
++    var slipNetTunnelType: String? = null,
++    var slipNetResolvers: String? = null,
++    var slipNetTorBridgeLines: String? = null,
++    var slipNetPublicKey: String? = null,
++    var slipNetConfig: String? = null,
++
++    // DNS-only profile (first-class DNS in the server list). dnsServers holds a
++    // comma-separated list of IPv4/IPv6 resolver addresses (primary, secondary).
++    var dnsServers: String? = null,
++    var dnsEnabled: Boolean? = null,
++
+     var obfsPassword: String? = null,
+     var portHopping: String? = null,
+     var portHoppingInterval: String? = null,
+@@ -75,6 +103,18 @@ data class ProfileItem(
+     var browserDialerMode: String? = null,
+ ) {
+ 
++    /**
++     * True when AmneziaWG obfuscation fields that the bundled Xray core cannot
++     * honor are set. Junk packet counts alone (Jc/Jmin/Jmax) map to plain
++     * WireGuard and must not trip this flag.
++     */
++    val hasAmneziaObfuscation: Boolean
++        get() = (awgInitPacketJunkSize ?: 0) > 0
++            || (awgResponsePacketJunkSize ?: 0) > 0
++            || !awgInitPacketMagicHeader.isNullOrBlank()
++            || !awgResponsePacketMagicHeader.isNullOrBlank()
++            || !awgUnderloadPacketMagicHeader.isNullOrBlank()
++
+     companion object {
+         fun create(configType: EConfigType): ProfileItem =
+             ProfileItem(configType = configType)
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/enums/EConfigType.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/enums/EConfigType.kt
+index c390f8d2..88089a7a 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/enums/EConfigType.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/enums/EConfigType.kt
+@@ -10,11 +10,13 @@ enum class EConfigType(val value: Int, val protocolScheme: String) {
+     VLESS(5, AppConfig.VLESS),
+     TROJAN(6, AppConfig.TROJAN),
+     WIREGUARD(7, AppConfig.WIREGUARD),
+-
+-    //    TUIC(8, AppConfig.TUIC),
++    AMNEZIA_WG(8, AppConfig.AMNEZIA),
+     HYSTERIA2(9, AppConfig.HYSTERIA2),
+     HYSTERIA(900, AppConfig.HYSTERIA),
+     HTTP(10, AppConfig.HTTP),
++    PSIPHON(11, AppConfig.PSIPHON),
++    SLIPNET(12, AppConfig.SLIPNET),
++    DNS(13, AppConfig.DNS),
+     POLICYGROUP(101, AppConfig.CUSTOM),
+     PROXYCHAIN(102, AppConfig.CUSTOM);
+ 
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/handler/AngConfigManager.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/handler/AngConfigManager.kt
+index e790e595..95c056ed 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/handler/AngConfigManager.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/handler/AngConfigManager.kt
+@@ -12,9 +12,13 @@ import com.v2ray.ang.dto.entities.SubscriptionCache
+ import com.v2ray.ang.dto.entities.SubscriptionItem
+ import com.v2ray.ang.enums.EConfigType
+ import com.v2ray.ang.extension.isNotNullEmpty
++import com.v2ray.ang.fmt.AmneziaFmt
+ import com.v2ray.ang.fmt.CustomFmt
++import com.v2ray.ang.fmt.DnsFmt
+ import com.v2ray.ang.fmt.Hysteria2Fmt
++import com.v2ray.ang.fmt.PsiphonFmt
+ import com.v2ray.ang.fmt.ShadowsocksFmt
++import com.v2ray.ang.fmt.SlipNetFmt
+ import com.v2ray.ang.fmt.SocksFmt
+ import com.v2ray.ang.fmt.TrojanFmt
+ import com.v2ray.ang.fmt.V2rayNFmt
+@@ -46,8 +50,13 @@ object AngConfigManager {
+             EConfigType.TROJAN.protocolScheme to TrojanFmt::parse,
+             EConfigType.VLESS.protocolScheme to VlessFmt::parse,
+             EConfigType.WIREGUARD.protocolScheme to WireguardFmt::parse,
++            EConfigType.AMNEZIA_WG.protocolScheme to AmneziaFmt::parse,
++            AppConfig.V2RAYS_AMNEZIA_VPN to AmneziaFmt::parse,
+             EConfigType.HYSTERIA2.protocolScheme to Hysteria2Fmt::parse,
+             AppConfig.HY2 to Hysteria2Fmt::parse,
++            AppConfig.PSIPHON to PsiphonFmt::parse,
++            AppConfig.SLIPNET to SlipNetFmt::parse,
++            AppConfig.DNS to DnsFmt::parse,
+         )
+     }
+ 
+@@ -162,7 +171,11 @@ object AngConfigManager {
+                 EConfigType.VLESS -> VlessFmt.toUri(config)
+                 EConfigType.TROJAN -> TrojanFmt.toUri(config)
+                 EConfigType.WIREGUARD -> WireguardFmt.toUri(config)
++                EConfigType.AMNEZIA_WG -> AmneziaFmt.toUri(config)
+                 EConfigType.HYSTERIA2 -> Hysteria2Fmt.toUri(config)
++                EConfigType.PSIPHON -> PsiphonFmt.toUri(config)
++                EConfigType.SLIPNET -> SlipNetFmt.toUri(config)
++                EConfigType.DNS -> DnsFmt.toUri(config)
+                 else -> {}
+             }
+         } catch (e: Exception) {
+@@ -369,9 +382,35 @@ object AngConfigManager {
+                 LogUtil.e(AppConfig.TAG, "Failed to parse custom config server as single config", e)
+             }
+             return 0
++        } else if (PsiphonFmt.isPsiphonServerList(server)) {
++            try {
++                val configs = PsiphonFmt.parseSubscription(server)
++                if (configs.isNotEmpty()) {
++                    configs.forEach {
++                        it.subscriptionId = subid
++                        it.description = generateDescription(it)
++                    }
++                    commitProfiles(
++                        configs = configs.map(::ParsedProfile),
++                        subid = subid,
++                        append = append,
++                    )
++                    return configs.size
++                }
++            } catch (e: ProfileStorageException) {
++                throw e
++            } catch (e: Exception) {
++                LogUtil.e(AppConfig.TAG, "Failed to parse Psiphon server list", e)
++            }
++            return 0
+         } else if (server.startsWith("[Interface]") && server.contains("[Peer]")) {
+             try {
+-                val config = WireguardFmt.parseWireguardConfFile(server)
++                val config = if (server.containsAmneziaMarkers()) {
++                    AmneziaFmt.parseConfigText(server)
++                } else {
++                    WireguardFmt.parseWireguardConfFile(server)
++                }
++                if (config == null) return 0
+                 config.subscriptionId = subid
+                 config.description = generateDescription(config)
+                 commitProfiles(
+@@ -624,6 +663,17 @@ object AngConfigManager {
+      */
+     fun generateDescription(profile: ProfileItem): String {
+         // Hide xxx:xxx:***/xxx.xxx.xxx.***
++        if (profile.configType == EConfigType.DNS) {
++            val servers = (profile.dnsServers ?: "").split(',')
++                .map { it.trim() }
++                .filter { it.isNotBlank() }
++            return when (servers.size) {
++                0 -> ""
++                1 -> servers[0]
++                else -> "${servers[0]}, +${servers.size - 1}"
++            }
++        }
++
+         val server = profile.server
+         val port = profile.serverPort
+         if (server.isNullOrBlank() && port.isNullOrBlank()) return ""
+@@ -637,4 +687,20 @@ object AngConfigManager {
+ 
+         return "$addrPart : ${port ?: ""}"
+     }
++
++    /**
++     * Detects whether a pasted config text carries AmneziaWG-specific markers
++     * (junk/obfuscation keys), which makes it an AmneziaWG config rather than a
++     * plain WireGuard one.
++     *
++     * @param configText The config text.
++     * @return True if AmneziaWG markers are present.
++     */
++    private fun String.containsAmneziaMarkers(): Boolean {
++        val lower = lowercase()
++        return Regex(
++            """^(Jc|Jmin|Jmax|S1|S2|H1|H2|H3|H4|H5)\s*=""",
++            RegexOption.MULTILINE
++        ).containsMatchIn(lower)
++    }
+ }
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/mtproto/NativeProxy.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/mtproto/NativeProxy.kt
+index ab54e338..9ad2463c 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/mtproto/NativeProxy.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/mtproto/NativeProxy.kt
+@@ -1,9 +1,14 @@
+ package com.v2ray.ang.mtproto
+ 
++import android.content.Context
+ import android.util.Log
++import androidx.core.content.ContextCompat
+ import com.sun.jna.Library
+ import com.sun.jna.Native
+ import com.sun.jna.Pointer
++import com.v2ray.ang.AppConfig
++import com.v2ray.ang.handler.MmkvManager
++import java.util.concurrent.Executors
+ 
+ private interface ProxyLibrary : Library {
+     companion object {
+@@ -77,6 +82,79 @@ object NativeProxy {
+         }
+     }
+ 
++    private val controlExecutor = Executors.newSingleThreadExecutor { runnable ->
++        Thread(runnable, "mirrly-control").apply { isDaemon = true }
++    }
++
++    /**
++     * Starts the engine on a background thread with the given listen address.
++     * On success persists [AppConfig.PREF_MIRRLY_ENABLED], domain, and port so the
++     * service layer can honor the flag on later tunnel starts. The result is
++     * delivered on the main executor.
++     */
++    fun start(
++        domain: String,
++        port: Int,
++        context: Context,
++        onResult: ((Int) -> Unit)? = null,
++    ) {
++        val safePort = port.coerceIn(1, 65535)
++        if (isStarted) {
++            onResult?.invoke(0)
++            return
++        }
++        val mainExecutor = ContextCompat.getMainExecutor(context)
++        controlExecutor.execute {
++            setCfProxyCacheDir(context.cacheDir.absolutePath)
++            setCfProxyConfig(true, domain)
++            val code = startProxy(AppConfig.LOOPBACK, safePort, "", "", 0)
++            if (code == 0) {
++                MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_ENABLED, true)
++                MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_DOMAIN, domain)
++                MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_PORT, safePort.toString())
++            }
++            mainExecutor.execute { onResult?.invoke(code) }
++        }
++    }
++
++    /**
++     * Starts the engine from persisted settings, falling back to the app defaults.
++     * Used by the VPN service to honor [AppConfig.PREF_MIRRLY_ENABLED].
++     */
++    fun startConfigured(context: Context, onResult: ((Int) -> Unit)? = null) {
++        val domain = MmkvManager.decodeSettingsString(AppConfig.PREF_MIRRLY_DOMAIN)
++            ?.takeIf { it.isNotBlank() }
++            ?: AppConfig.MIRRLY_DEFAULT_DOMAIN
++        val port = MmkvManager.decodeSettingsString(AppConfig.PREF_MIRRLY_PORT)
++            ?.toIntOrNull()
++            ?: AppConfig.MIRRLY_DEFAULT_PORT
++        start(domain, port, context, onResult)
++    }
++
++    /**
++     * Stops the engine on a background thread. Clears
++     * [AppConfig.PREF_MIRRLY_ENABLED] only when [clearEnabled] is true; the VPN
++     * teardown path passes false so the flag survives a tunnel restart. The result
++     * is delivered on the main executor.
++     */
++    fun stop(context: Context, clearEnabled: Boolean, onStopped: ((Int) -> Unit)? = null) {
++        if (!isStarted) {
++            if (clearEnabled) {
++                MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_ENABLED, false)
++            }
++            onStopped?.invoke(0)
++            return
++        }
++        val mainExecutor = ContextCompat.getMainExecutor(context)
++        controlExecutor.execute {
++            val code = stopProxy()
++            if (clearEnabled) {
++                MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_ENABLED, false)
++            }
++            mainExecutor.execute { onStopped?.invoke(code) }
++        }
++    }
++
+     fun resetNetworkSockets() {
+         if (!isStarted) return
+         try {
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/service/CoreVpnService.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/service/CoreVpnService.kt
+index 9d0d8461..c642b181 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/service/CoreVpnService.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/service/CoreVpnService.kt
+@@ -18,9 +18,11 @@ import com.v2ray.ang.contracts.ServiceControl
+ import com.v2ray.ang.contracts.Tun2SocksControl
+ import com.v2ray.ang.core.CoreServiceManager
+ import com.v2ray.ang.handler.AppLocaleManager
++import com.v2ray.ang.handler.DnsManager
+ import com.v2ray.ang.handler.MmkvManager
+ import com.v2ray.ang.handler.NotificationManager
+ import com.v2ray.ang.handler.SettingsManager
++import com.v2ray.ang.mtproto.NativeProxy
+ import com.v2ray.ang.root.RootLanSharing
+ import com.v2ray.ang.util.LogUtil
+ import com.v2ray.ang.util.Utils
+@@ -114,6 +116,12 @@ class CoreVpnService : VpnService(), ServiceControl {
+ 
+         // Start LAN sharing if enabled in settings
+         RootLanSharing.startClientSharing(this)
++
++        // Start the Mirrly TG proxy when its Settings toggle is on. The engine runs
++        // on NativeProxy's own control thread, never on the service main thread.
++        if (MmkvManager.decodeSettingsBool(AppConfig.PREF_MIRRLY_ENABLED)) {
++            NativeProxy.startConfigured(this)
++        }
+     }
+ 
+     override fun stopService() {
+@@ -235,6 +243,14 @@ class CoreVpnService : VpnService(), ServiceControl {
+             }
+         }
+ 
++        // DNS Changer: apply the active custom DNS profile on top of the configured
++        // VPN DNS. Android restores the previous resolver when the interface closes.
++        DnsManager.getActiveServers().forEach {
++            if (Utils.isPureIpAddress(it)) {
++                builder.addDnsServer(it)
++            }
++        }
++
+         //builder.setSession(V2RayServiceManager.getRunningServerName())
+     }
+ 
+@@ -332,6 +348,10 @@ class CoreVpnService : VpnService(), ServiceControl {
+ 
+         CoreServiceManager.stopCoreLoop()
+ 
++        // Stop the Mirrly TG proxy started with the tunnel. Keep the PREF_MIRRLY_ENABLED
++        // flag so a later tunnel start restores it.
++        NativeProxy.stop(this, clearEnabled = false)
++
+         if (isForced) {
+             //stopSelf has to be called ahead of mInterface.close(). otherwise v2ray core cannot be stooped
+             //It's strage but true.
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/service/RealPingWorkerService.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/service/RealPingWorkerService.kt
+index 65b5a6a4..8d3b1e98 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/service/RealPingWorkerService.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/service/RealPingWorkerService.kt
+@@ -111,6 +111,9 @@ class RealPingWorkerService(
+         if (!config.configType.isComplexType()
+             && config.configType != EConfigType.HYSTERIA2
+             && config.configType != EConfigType.WIREGUARD
++            && config.configType != EConfigType.AMNEZIA_WG
++            && config.configType != EConfigType.PSIPHON
++            && config.configType != EConfigType.SLIPNET
+             && config.alpn?.startsWith("h3") != true
+             && config.server.isNotNullEmpty()
+             && config.serverPort?.toIntOrNull() != null
+@@ -139,6 +142,9 @@ class RealPingWorkerService(
+         if (!config.configType.isComplexType()
+             && config.configType != EConfigType.HYSTERIA2
+             && config.configType != EConfigType.WIREGUARD
++            && config.configType != EConfigType.AMNEZIA_WG
++            && config.configType != EConfigType.PSIPHON
++            && config.configType != EConfigType.SLIPNET
+             && config.alpn?.split(',')?.all { it.trim().startsWith("h3") } != true
+             && config.server.isNotNullEmpty()
+             && config.serverPort?.toIntOrNull() != null
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainActivity.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainActivity.kt
+index f8a178e9..8c2ea50d 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainActivity.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainActivity.kt
+@@ -39,6 +39,9 @@ import com.v2ray.ang.ui.server.ServerHysteria2Activity
+ import com.v2ray.ang.ui.server.ServerProxyChainActivity
+ import com.v2ray.ang.ui.server.ServerShadowsocksActivity
+ import com.v2ray.ang.ui.server.ServerSocksActivity
++import com.v2ray.ang.ui.server.ServerAmneziaActivity
++import com.v2ray.ang.ui.server.ServerPsiphonActivity
++import com.v2ray.ang.ui.server.ServerSlipNetActivity
+ import com.v2ray.ang.ui.server.ServerTrojanActivity
+ import com.v2ray.ang.ui.server.ServerVlessActivity
+ import com.v2ray.ang.ui.server.ServerVmessActivity
+@@ -205,6 +208,7 @@ class MainActivity : HelperBaseComponentActivity() {
+             EConfigType.HTTP.value -> Intent(this, ServerHttpActivity::class.java)
+             EConfigType.TROJAN.value -> Intent(this, ServerTrojanActivity::class.java)
+             EConfigType.WIREGUARD.value -> Intent(this, ServerWireguardActivity::class.java)
++            EConfigType.AMNEZIA_WG.value -> Intent(this, ServerAmneziaActivity::class.java)
+             EConfigType.HYSTERIA2.value -> Intent(this, ServerHysteria2Activity::class.java)
+             else -> Intent(this, ServerHttpActivity::class.java).apply {
+                 putExtra("createConfigType", createConfigType)
+@@ -257,7 +261,10 @@ class MainActivity : HelperBaseComponentActivity() {
+             EConfigType.HTTP -> ServerHttpActivity::class.java
+             EConfigType.TROJAN -> ServerTrojanActivity::class.java
+             EConfigType.WIREGUARD -> ServerWireguardActivity::class.java
++            EConfigType.AMNEZIA_WG -> ServerAmneziaActivity::class.java
+             EConfigType.HYSTERIA2 -> ServerHysteria2Activity::class.java
++            EConfigType.PSIPHON -> ServerPsiphonActivity::class.java
++            EConfigType.SLIPNET -> ServerSlipNetActivity::class.java
+             else -> ServerHttpActivity::class.java
+         }
+         val intent = Intent(this, activityClass).apply {
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainContract.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainContract.kt
+index dc0dc3ed..38b15e92 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainContract.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainContract.kt
+@@ -65,7 +65,7 @@ sealed interface MainAction {
+     data object DismissQRCodeDialog : MainAction
+ 
+     data class ImportBatchConfig(val configText: String) : MainAction
+-    data class ShowPasteConfigDialog(val amnezia: Boolean) : MainAction
++    data class ShowPasteConfigDialog(val mode: String) : MainAction
+     data object ShowMirrlyDialog : MainAction
+ 
+     data object LocateHandled : MainAction
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainImportMenu.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainImportMenu.kt
+index 4347b22e..ec8b72ea 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainImportMenu.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainImportMenu.kt
+@@ -14,9 +14,10 @@ private enum class ImportMenuAction(@StringRes val labelRes: Int, val iconRes: I
+     QRCode(R.string.menu_item_import_config_qrcode, R.drawable.ic_qu_scan_24dp, MainAction.ImportQRcode),
+     Clipboard(R.string.menu_item_import_config_clipboard, R.drawable.ic_copy, MainAction.ImportClipboard),
+     LocalFile(R.string.menu_item_import_config_local, R.drawable.ic_cloud_download_24dp, MainAction.ImportConfigLocal),
+-    WireGuardPaste(R.string.menu_item_import_config_wireguard_paste, R.drawable.ic_restore_24dp, MainAction.ShowPasteConfigDialog(false)),
+-    AmneziaPaste(R.string.menu_item_import_config_amnezia_paste, R.drawable.ic_privacy_24dp, MainAction.ShowPasteConfigDialog(true)),
+-    MirrlyProxy(R.string.menu_item_mirrly_tg_proxy, R.drawable.ic_telegram_24dp, MainAction.ShowMirrlyDialog),
++    WireGuardPaste(R.string.menu_item_import_config_wireguard_paste, R.drawable.ic_restore_24dp, MainAction.ShowPasteConfigDialog("wireguard")),
++    AmneziaPaste(R.string.menu_item_import_config_amnezia_paste, R.drawable.ic_privacy_24dp, MainAction.ShowPasteConfigDialog("amnezia")),
++    SlipNetPaste(R.string.menu_item_import_config_slipnet_paste, R.drawable.ic_slipnet_24dp, MainAction.ShowPasteConfigDialog("slipnet")),
++    MirrlyProxy(R.string.menu_item_mirrly_tg_proxy, R.drawable.ic_mirrly_24dp, MainAction.ShowMirrlyDialog),
+     PolicyGroup(R.string.menu_item_import_config_policy_group, R.drawable.ic_select_all_24dp, MainAction.ImportManually(EConfigType.POLICYGROUP.value)),
+     ProxyChain(R.string.menu_item_import_config_proxy_chain, R.drawable.ic_routing_24dp, MainAction.ImportManually(EConfigType.PROXYCHAIN.value)),
+     Vmess(R.string.menu_item_import_config_manually_vmess, null, MainAction.ImportManually(EConfigType.VMESS.value)),
+@@ -26,20 +27,23 @@ private enum class ImportMenuAction(@StringRes val labelRes: Int, val iconRes: I
+     Http(R.string.menu_item_import_config_manually_http, null, MainAction.ImportManually(EConfigType.HTTP.value)),
+     Trojan(R.string.menu_item_import_config_manually_trojan, null, MainAction.ImportManually(EConfigType.TROJAN.value)),
+     WireGuard(R.string.menu_item_import_config_manually_wireguard, null, MainAction.ImportManually(EConfigType.WIREGUARD.value)),
++    AmneziaWG(R.string.menu_item_import_config_manually_amnezia, null, MainAction.ImportManually(EConfigType.AMNEZIA_WG.value)),
+     Hysteria2(R.string.menu_item_import_config_manually_hysteria2, null, MainAction.ImportManually(EConfigType.HYSTERIA2.value))
+ }
+ 
+-enum class MainMoreMenuAction(@StringRes val labelRes: Int) {
+-    RestartService(R.string.title_service_restart),
+-    DeleteAll(R.string.title_del_all_config),
+-    DeleteDuplicate(R.string.title_del_duplicate_config),
+-    DeleteInvalid(R.string.title_del_invalid_config),
+-    ExportAll(R.string.title_export_all),
+-    LocateSelected(R.string.title_locate_selected_config),
+-    SortByTestResults(R.string.title_sort_by_test_results),
+-    TestAll(R.string.title_ping_all_server),
+-    TestAllRealPing(R.string.title_real_ping_all_server),
+-    UpdateSubscriptions(R.string.title_sub_update)
++enum class MainMoreMenuAction(@StringRes val labelRes: Int, val iconRes: Int?) {
++    RestartService(R.string.title_service_restart, null),
++    DeleteAll(R.string.title_del_all_config, null),
++    DeleteDuplicate(R.string.title_del_duplicate_config, null),
++    DeleteInvalid(R.string.title_del_invalid_config, null),
++    ExportAll(R.string.title_export_all, null),
++    LocateSelected(R.string.title_locate_selected_config, null),
++    SortByTestResults(R.string.title_sort_by_test_results, null),
++    TestAll(R.string.title_ping_all_server, null),
++    TestAllRealPing(R.string.title_real_ping_all_server, null),
++    UpdateSubscriptions(R.string.title_sub_update, null),
++    DnsPingChecker(R.string.title_dns_ping_checker, R.drawable.ic_dns_24dp),
++    DnsChanger(R.string.title_dns_changer, R.drawable.ic_dns_24dp),
+ }
+ 
+ internal enum class ServerMenuAction(
+@@ -73,6 +77,7 @@ fun ImportMenuContent(onAction: (MainAction) -> Unit) = AppDropdownMenuItems(
+ fun MoreMenuContent(onSelected: (MainMoreMenuAction) -> Unit) = AppDropdownMenuItems(
+     items = MainMoreMenuAction.entries,
+     labelRes = { it.labelRes },
++    iconRes = { it.iconRes },
+     onSelected = onSelected
+ )
+ 
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainRepository.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainRepository.kt
+index e272f747..207c7545 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainRepository.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainRepository.kt
+@@ -54,7 +54,11 @@ class MainRepository(
+                 AppConfig.MSG_STATE_RUNNING -> MainServiceEvent.StateRunning
+                 AppConfig.MSG_STATE_NOT_RUNNING -> MainServiceEvent.StateNotRunning
+                 AppConfig.MSG_STATE_START_SUCCESS -> MainServiceEvent.StateStartSuccess
+-                AppConfig.MSG_STATE_START_FAILURE -> MainServiceEvent.StateStartFailure
++                AppConfig.MSG_STATE_START_FAILURE -> MainServiceEvent.StateStartFailure(
++                    safeIntent.getStringExtra("content")
++                        ?.takeIf { it.isNotBlank() }
++                        ?: ""
++                )
+ 
+                 AppConfig.MSG_STATE_STOP_SUCCESS -> MainServiceEvent.StateStopSuccess
+                 AppConfig.MSG_MEASURE_DELAY_RESULT -> safeIntent
+@@ -72,7 +76,10 @@ class MainRepository(
+ 
+                 else -> null
+             }
+-            event?.let { _mainServiceEvent.tryEmit(it) }
++            event?.let {
++                com.v2ray.ang.engine.ConnectionManager.onServiceCommand(safeIntent.getIntExtra("key", 0))
++                _mainServiceEvent.tryEmit(it)
++            }
+         }
+     }
+ 
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainScreen.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainScreen.kt
+index 3abbbc68..12ef0262 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainScreen.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainScreen.kt
+@@ -42,10 +42,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
+ import android.content.Intent
+ import android.net.Uri
+ import com.v2ray.ang.R
++import com.v2ray.ang.AppConfig
+ import com.v2ray.ang.dto.entities.ProfileItem
++import com.v2ray.ang.handler.MmkvManager
+ import com.v2ray.ang.mtproto.NativeProxy
+ import com.v2ray.ang.ui.compose.LocalDarkTheme
+ import com.v2ray.ang.ui.compose.QRCodeDialog
++import com.v2ray.ang.ui.dns.DnsChangerActivity
++import com.v2ray.ang.ui.dns.DnsPingActivity
+ import kotlinx.coroutines.flow.distinctUntilChanged
+ import kotlinx.coroutines.launch
+ 
+@@ -59,7 +63,7 @@ fun MainScreen(
+     val groups = uiState.groups
+     val isLoading by mainViewModel.isLoading.collectAsStateWithLifecycle()
+     val isRunning = uiState.isRunning
+-    val displayText = mainViewModel.formatStatus(uiState.status)
++    val displayText = remember(uiState.status) { mainViewModel.formatStatus(uiState.status) }
+     val selectedGuid = uiState.selectedGuid
+     val doubleColumnDisplay = uiState.doubleColumnDisplay
+     val confirmRemove = uiState.confirmRemove
+@@ -74,12 +78,12 @@ fun MainScreen(
+     var showDelDuplicateConfirm by remember { mutableStateOf(false) }
+     var showDelInvalidConfirm by remember { mutableStateOf(false) }
+     var showRemoveConfirm by remember { mutableStateOf<String?>(null) }
+-    var pasteDialogAmnezia by remember { mutableStateOf<Boolean?>(null) }
++    var pasteDialogMode by remember { mutableStateOf<String?>(null) }
+     var pasteDialogText by remember { mutableStateOf("") }
+ 
+     var showMirrlyDialog by remember { mutableStateOf(false) }
+-    var mirrlyDomain by remember { mutableStateOf("mirrly-tg-proxy-worker.brawny-singer.workers.dev") }
+-    var mirrlyPort by remember { mutableStateOf("1443") }
++    var mirrlyDomain by remember { mutableStateOf(AppConfig.MIRRLY_DEFAULT_DOMAIN) }
++    var mirrlyPort by remember { mutableStateOf(AppConfig.MIRRLY_DEFAULT_PORT.toString()) }
+     var mirrlyRunning by remember { mutableStateOf(false) }
+     var mirrlyStatus by remember { mutableStateOf("") }
+     var mirrlyLink by remember { mutableStateOf("") }
+@@ -95,9 +99,23 @@ fun MainScreen(
+         when (action) {
+             is MainAction.ShowPasteConfigDialog -> {
+                 pasteDialogText = ""
+-                pasteDialogAmnezia = action.amnezia
++                pasteDialogMode = action.mode
+             }
+             is MainAction.ShowMirrlyDialog -> {
++                mirrlyDomain = MmkvManager.decodeSettingsString(AppConfig.PREF_MIRRLY_DOMAIN)
++                    ?: AppConfig.MIRRLY_DEFAULT_DOMAIN
++                mirrlyPort = MmkvManager.decodeSettingsString(AppConfig.PREF_MIRRLY_PORT)
++                    ?: AppConfig.MIRRLY_DEFAULT_PORT.toString()
++                mirrlyRunning = NativeProxy.isStarted
++                if (NativeProxy.isStarted) {
++                    mirrlyStatus = context.getString(
++                        R.string.mirrly_status_running,
++                        MmkvManager.decodeSettingsString(AppConfig.PREF_MIRRLY_PORT)
++                            ?.toIntOrNull() ?: AppConfig.MIRRLY_DEFAULT_PORT
++                    )
++                } else {
++                    mirrlyStatus = ""
++                }
+                 showMirrlyDialog = true
+             }
+             else -> onAction(action)
+@@ -170,15 +188,18 @@ fun MainScreen(
+         QRCodeDialog(bitmap = shareQRCodeBitmap, onDismiss = { onAction(MainAction.DismissQRCodeDialog) })
+     }
+ 
+-    val amneziaFlag = pasteDialogAmnezia
+-    if (amneziaFlag != null) {
++    val pasteMode = pasteDialogMode
++    if (pasteMode != null) {
+         AlertDialog(
+-            onDismissRequest = { pasteDialogAmnezia = null },
++            onDismissRequest = { pasteDialogMode = null },
+             title = {
+                 Text(
+                     stringResource(
+-                        if (amneziaFlag) R.string.menu_item_import_config_amnezia_paste
+-                        else R.string.menu_item_import_config_wireguard_paste
++                        when (pasteMode) {
++                            "amnezia" -> R.string.menu_item_import_config_amnezia_paste
++                            "slipnet" -> R.string.menu_item_import_config_slipnet_paste
++                            else -> R.string.menu_item_import_config_wireguard_paste
++                        }
+                     )
+                 )
+             },
+@@ -189,13 +210,21 @@ fun MainScreen(
+                     modifier = Modifier
+                         .fillMaxWidth()
+                         .height(220.dp),
+-                    placeholder = { Text("[Interface]\nPrivateKey = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = ...") }
++                    placeholder = {
++                        Text(
++                            if (pasteMode == "slipnet") {
++                                stringResource(R.string.paste_hint_slipnet)
++                            } else {
++                                stringResource(R.string.paste_hint_wireguard)
++                            }
++                        )
++                    }
+                 )
+             },
+             confirmButton = {
+                 TextButton(onClick = {
+                     val text = pasteDialogText
+-                    pasteDialogAmnezia = null
++                    pasteDialogMode = null
+                     if (text.isNotBlank()) {
+                         onAction(MainAction.ImportBatchConfig(text))
+                     }
+@@ -204,7 +233,7 @@ fun MainScreen(
+                 }
+             },
+             dismissButton = {
+-                TextButton(onClick = { pasteDialogAmnezia = null }) {
++                TextButton(onClick = { pasteDialogMode = null }) {
+                     Text(stringResource(R.string.action_cancel))
+                 }
+             }
+@@ -219,14 +248,20 @@ fun MainScreen(
+                 Column {
+                     OutlinedTextField(
+                         value = mirrlyDomain,
+-                        onValueChange = { mirrlyDomain = it },
++                        onValueChange = {
++                            mirrlyDomain = it
++                            MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_DOMAIN, it)
++                        },
+                         label = { Text(stringResource(R.string.mirrly_worker_domain)) },
+                         modifier = Modifier.fillMaxWidth()
+                     )
+                     Spacer(modifier = Modifier.height(8.dp))
+                     OutlinedTextField(
+                         value = mirrlyPort,
+-                        onValueChange = { mirrlyPort = it.filter { c -> c.isDigit() } },
++                        onValueChange = {
++                            mirrlyPort = it.filter { c -> c.isDigit() }
++                            MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_PORT, mirrlyPort)
++                        },
+                         label = { Text(stringResource(R.string.mirrly_port)) },
+                         modifier = Modifier.fillMaxWidth()
+                     )
+@@ -251,17 +286,16 @@ fun MainScreen(
+                     }
+                 } else {
+                     TextButton(onClick = {
+-                        val port = mirrlyPort.toIntOrNull() ?: 1443
+-                        NativeProxy.setCfProxyCacheDir(context.cacheDir.absolutePath)
+-                        NativeProxy.setCfProxyConfig(true, mirrlyDomain)
+-                        val code = NativeProxy.startProxy("127.0.0.1", port, "", "", 0)
+-                        if (code == 0) {
+-                            mirrlyRunning = true
+-                            mirrlyStatus = context.getString(R.string.mirrly_status_running, port)
+-                            val secret = NativeProxy.getSecretWithPrefix().orEmpty()
+-                            mirrlyLink = "tg://proxy?server=127.0.0.1&port=$port&secret=$secret"
+-                        } else {
+-                            mirrlyStatus = context.getString(R.string.mirrly_status_failed, code)
++                        val port = mirrlyPort.toIntOrNull() ?: AppConfig.MIRRLY_DEFAULT_PORT
++                        NativeProxy.start(mirrlyDomain, port, context) { code ->
++                            if (code == 0) {
++                                mirrlyRunning = true
++                                mirrlyStatus = context.getString(R.string.mirrly_status_running, port)
++                                val secret = NativeProxy.getSecretWithPrefix().orEmpty()
++                                mirrlyLink = "tg://proxy?server=127.0.0.1&port=$port&secret=$secret"
++                            } else {
++                                mirrlyStatus = context.getString(R.string.mirrly_status_failed, code)
++                            }
+                         }
+                     }) {
+                         Text(stringResource(R.string.mirrly_start))
+@@ -271,10 +305,11 @@ fun MainScreen(
+             dismissButton = {
+                 if (mirrlyRunning) {
+                     TextButton(onClick = {
+-                        NativeProxy.stopProxy()
+-                        mirrlyRunning = false
+-                        mirrlyStatus = ""
+-                        mirrlyLink = ""
++                        NativeProxy.stop(context, clearEnabled = true) {
++                            mirrlyRunning = false
++                            mirrlyStatus = ""
++                            mirrlyLink = ""
++                        }
+                     }) {
+                         Text(stringResource(R.string.mirrly_stop))
+                     }
+@@ -330,6 +365,12 @@ fun MainScreen(
+                             MainMoreMenuAction.TestAll -> onAction(MainAction.TestAllServers)
+                             MainMoreMenuAction.TestAllRealPing -> onAction(MainAction.TestRealAllServers)
+                             MainMoreMenuAction.UpdateSubscriptions -> onAction(MainAction.UpdateSubscriptions)
++                            MainMoreMenuAction.DnsPingChecker -> run {
++                                context.startActivity(Intent(context, DnsPingActivity::class.java))
++                            }
++                            MainMoreMenuAction.DnsChanger -> run {
++                                context.startActivity(Intent(context, DnsChangerActivity::class.java))
++                            }
+                         }
+                     }
+                 )
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainServiceEvent.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainServiceEvent.kt
+index 9da9eff1..7528ffee 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainServiceEvent.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainServiceEvent.kt
+@@ -6,7 +6,7 @@ sealed class MainServiceEvent {
+     data object StateRunning : MainServiceEvent()
+     data object StateNotRunning : MainServiceEvent()
+     data object StateStartSuccess : MainServiceEvent()
+-    data object StateStartFailure : MainServiceEvent()
++    data class StateStartFailure(val errorMessage: String) : MainServiceEvent()
+     data object StateStopSuccess : MainServiceEvent()
+     data class MeasureDelayResult(val result: ConnectionTestResult) : MainServiceEvent()
+     data object MeasureConfigSuccess : MainServiceEvent()
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainTopBar.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainTopBar.kt
+index 62dd0006..10f69abb 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainTopBar.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainTopBar.kt
+@@ -1,28 +1,39 @@
+ package com.v2ray.ang.ui.main
+ 
+-import androidx.compose.foundation.background
+ import androidx.compose.foundation.layout.Box
++import androidx.compose.foundation.layout.WindowInsets
++import androidx.compose.foundation.layout.asPaddingValues
+ import androidx.compose.foundation.layout.fillMaxWidth
++import androidx.compose.foundation.layout.heightIn
++import androidx.compose.foundation.layout.navigationBars
++import androidx.compose.foundation.layout.size
++import androidx.compose.foundation.layout.statusBars
+ import androidx.compose.foundation.layout.wrapContentSize
+-import androidx.compose.material.icons.Icons
+-import androidx.compose.material.icons.filled.Close
+-import androidx.compose.material.icons.filled.Search
++import androidx.compose.foundation.rememberScrollState
++import androidx.compose.material3.CircularProgressIndicator
++import androidx.compose.material3.DropdownMenu
++import androidx.compose.material3.ExperimentalMaterial3Api
+ import androidx.compose.material3.Icon
+ import androidx.compose.material3.IconButton
+-import androidx.compose.material3.TopAppBar
+-import androidx.compose.material3.TopAppBarDefaults
++import androidx.compose.material3.MaterialTheme
+ import androidx.compose.material3.OutlinedTextField
+ import androidx.compose.material3.Text
++import androidx.compose.material3.TopAppBar
+ import androidx.compose.runtime.Composable
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.remember
++import androidx.compose.runtime.setValue
+ import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
++import androidx.compose.ui.platform.LocalConfiguration
+ import androidx.compose.ui.res.painterResource
+ import androidx.compose.ui.res.stringResource
+-import androidx.compose.material3.CircularProgressIndicator
+-import androidx.compose.foundation.layout.size
+ import androidx.compose.ui.unit.dp
+ import com.v2ray.ang.R
++import com.v2ray.ang.ui.compose.verticalScrollbar
+ 
++@OptIn(ExperimentalMaterial3Api::class)
+ @Composable
+ fun MainTopBar(
+     isLoading: Boolean,
+@@ -35,6 +46,14 @@ fun MainTopBar(
+     onAction: (MainAction) -> Unit,
+     onMoreMenuAction: (MainMoreMenuAction) -> Unit
+ ) {
++    var showImportMenu by remember { mutableStateOf(false) }
++    var showMenu by remember { mutableStateOf(false) }
++    val importMenuScrollState = rememberScrollState()
++    val moreMenuScrollState = rememberScrollState()
++    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
++    val navBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
++    val maxMenuHeight = LocalConfiguration.current.screenHeightDp.dp - statusBarHeight - navBarHeight - 20.dp
++
+     TopAppBar(
+         title = {
+             if (showSearch) {
+@@ -63,7 +82,7 @@ fun MainTopBar(
+             }
+             if (showSearch) {
+                 IconButton(onClick = onSearchClose) {
+-                    Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.acc_close))
++                    Icon(painterResource(R.drawable.ic_close_24dp), contentDescription = stringResource(R.string.acc_close))
+                 }
+             } else {
+                 IconButton(onClick = { onSearchToggle(true) }) {
+@@ -72,13 +91,46 @@ fun MainTopBar(
+             }
+             // Quick Mirrly TG Proxy button for direct access
+             IconButton(onClick = { onAction(MainAction.ShowMirrlyDialog) }) {
+-                Icon(painterResource(R.drawable.ic_telegram_24dp), contentDescription = stringResource(R.string.menu_item_import_config_mirrly))
++                Icon(painterResource(R.drawable.ic_mirrly_24dp), contentDescription = stringResource(R.string.menu_item_mirrly_tg_proxy))
++            }
++            Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
++                IconButton(onClick = { showImportMenu = true }) {
++                    Icon(painterResource(R.drawable.ic_add_24dp), contentDescription = stringResource(R.string.acc_add))
++                }
++                DropdownMenu(
++                    expanded = showImportMenu,
++                    onDismissRequest = { showImportMenu = false },
++                    scrollState = importMenuScrollState,
++                    containerColor = MaterialTheme.colorScheme.surface,
++                    modifier = Modifier
++                        .heightIn(max = maxMenuHeight)
++                        .verticalScrollbar(importMenuScrollState)
++                ) {
++                    ImportMenuContent { action ->
++                        showImportMenu = false
++                        onAction(action)
++                    }
++                }
+             }
+             Box(modifier = Modifier.wrapContentSize(Alignment.TopEnd)) {
+-                IconButton(onClick = { /* More menu will be handled */ }) {
++                IconButton(onClick = { showMenu = true }) {
+                     Icon(painterResource(R.drawable.ic_more_vert_24dp), contentDescription = stringResource(R.string.acc_more_options))
+                 }
++                DropdownMenu(
++                    expanded = showMenu,
++                    onDismissRequest = { showMenu = false },
++                    scrollState = moreMenuScrollState,
++                    containerColor = MaterialTheme.colorScheme.surface,
++                    modifier = Modifier
++                        .heightIn(max = maxMenuHeight)
++                        .verticalScrollbar(moreMenuScrollState)
++                ) {
++                    MoreMenuContent { action ->
++                        showMenu = false
++                        onMoreMenuAction(action)
++                    }
++                }
+             }
+         }
+     )
+-}
++}
+\ No newline at end of file
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainViewModel.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainViewModel.kt
+index b972c617..3c5ebad8 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainViewModel.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/main/MainViewModel.kt
+@@ -106,8 +106,15 @@ class MainViewModel(
+                 updateRunningState(true)
+             }
+ 
+-            MainServiceEvent.StateStartFailure -> {
+-                toastError(R.string.toast_services_failure)
++            is MainServiceEvent.StateStartFailure -> {
++                val detail = event.errorMessage
++                if (detail.isNotBlank()) {
++                    toastError(getApplication<Application>().getString(R.string.toast_services_failure) +
++                        "\n$detail")
++                } else {
++                    toastError(R.string.toast_services_failure)
++                }
++                com.v2ray.ang.engine.ConnectionManager.onStartFailure(detail)
+                 updateRunningState(false)
+             }
+ 
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/server/ServerUiState.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/server/ServerUiState.kt
+index 3961bc3b..a2a0deaa 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/server/ServerUiState.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/server/ServerUiState.kt
+@@ -30,6 +30,14 @@ class ServerUiState(
+     reserved: String = "0,0,0",
+     localAddress: String = WIREGUARD_LOCAL_ADDRESS_V4,
+     mtu: String = WIREGUARD_LOCAL_MTU,
++    awgJunkPacketCount: String = "",
++    awgJunkPacketMinSize: String = "",
++    awgJunkPacketMaxSize: String = "",
++    awgInitPacketJunkSize: String = "",
++    awgResponsePacketJunkSize: String = "",
++    awgInitPacketMagicHeader: String = "",
++    awgResponsePacketMagicHeader: String = "",
++    awgUnderloadPacketMagicHeader: String = "",
+     obfsPassword: String = "",
+     portHopping: String = "",
+     portHoppingInterval: String = "",
+@@ -61,6 +69,7 @@ class ServerUiState(
+     echConfigList: String = "",
+     verifyPeerCertByName: String = "",
+     pinnedCA256: String = "",
++    dnsServers: String = "",
+     isFetchingCert: Boolean = false
+ ) {
+     var configType by mutableStateOf(configType)
+@@ -78,6 +87,14 @@ class ServerUiState(
+     var reserved by mutableStateOf(reserved)
+     var localAddress by mutableStateOf(localAddress)
+     var mtu by mutableStateOf(mtu)
++    var awgJunkPacketCount by mutableStateOf(awgJunkPacketCount)
++    var awgJunkPacketMinSize by mutableStateOf(awgJunkPacketMinSize)
++    var awgJunkPacketMaxSize by mutableStateOf(awgJunkPacketMaxSize)
++    var awgInitPacketJunkSize by mutableStateOf(awgInitPacketJunkSize)
++    var awgResponsePacketJunkSize by mutableStateOf(awgResponsePacketJunkSize)
++    var awgInitPacketMagicHeader by mutableStateOf(awgInitPacketMagicHeader)
++    var awgResponsePacketMagicHeader by mutableStateOf(awgResponsePacketMagicHeader)
++    var awgUnderloadPacketMagicHeader by mutableStateOf(awgUnderloadPacketMagicHeader)
+     var obfsPassword by mutableStateOf(obfsPassword)
+     var portHopping by mutableStateOf(portHopping)
+     var portHoppingInterval by mutableStateOf(portHoppingInterval)
+@@ -109,6 +126,7 @@ class ServerUiState(
+     var echConfigList by mutableStateOf(echConfigList)
+     var verifyPeerCertByName by mutableStateOf(verifyPeerCertByName)
+     var pinnedCA256 by mutableStateOf(pinnedCA256)
++    var dnsServers by mutableStateOf(dnsServers)
+     var isFetchingCert by mutableStateOf(isFetchingCert)
+ 
+     fun toProfileItem(initialConfig: ProfileItem): ProfileItem {
+@@ -117,6 +135,7 @@ class ServerUiState(
+         val isShadowsocks = configType == EConfigType.SHADOWSOCKS
+         val isSocksOrHttp = configType == EConfigType.SOCKS || configType == EConfigType.HTTP
+         val isWireguard = configType == EConfigType.WIREGUARD
++        val isAmnezia = configType == EConfigType.AMNEZIA_WG
+         val isHysteria2 = configType == EConfigType.HYSTERIA2
+ 
+         return initialConfig.copy(
+@@ -132,16 +151,24 @@ class ServerUiState(
+             },
+             flow = if (isVless) flow else null,
+             username = if (isSocksOrHttp) username else null,
+-            secretKey = if (isWireguard) secretKey else null,
++            secretKey = if (isWireguard || isAmnezia) secretKey else null,
+             publicKey = when {
+-                isWireguard -> publicKey
++                isWireguard || isAmnezia -> publicKey
+                 streamSecurity == REALITY -> publicKeyReality
+                 else -> null
+             },
+-            preSharedKey = if (isWireguard) preSharedKey else null,
+-            reserved = if (isWireguard) reserved else null,
+-            localAddress = if (isWireguard) localAddress else null,
+-            mtu = if (isWireguard) mtu.toIntOrNull() else null,
++            preSharedKey = if (isWireguard || isAmnezia) preSharedKey else null,
++            reserved = if (isWireguard || isAmnezia) reserved else null,
++            localAddress = if (isWireguard || isAmnezia) localAddress else null,
++            mtu = if (isWireguard || isAmnezia) mtu.toIntOrNull() else null,
++            awgJunkPacketCount = if (isAmnezia) awgJunkPacketCount.toIntOrNull() else null,
++            awgJunkPacketMinSize = if (isAmnezia) awgJunkPacketMinSize.toIntOrNull() else null,
++            awgJunkPacketMaxSize = if (isAmnezia) awgJunkPacketMaxSize.toIntOrNull() else null,
++            awgInitPacketJunkSize = if (isAmnezia) awgInitPacketJunkSize.toIntOrNull() else null,
++            awgResponsePacketJunkSize = if (isAmnezia) awgResponsePacketJunkSize.toIntOrNull() else null,
++            awgInitPacketMagicHeader = if (isAmnezia) awgInitPacketMagicHeader.nullIfBlank() else null,
++            awgResponsePacketMagicHeader = if (isAmnezia) awgResponsePacketMagicHeader.nullIfBlank() else null,
++            awgUnderloadPacketMagicHeader = if (isAmnezia) awgUnderloadPacketMagicHeader.nullIfBlank() else null,
+             obfsPassword = if (isHysteria2) obfsPassword else null,
+             portHopping = if (isHysteria2) portHopping else null,
+             portHoppingInterval = if (isHysteria2) portHoppingInterval else null,
+@@ -175,7 +202,8 @@ class ServerUiState(
+             mldsa65Verify = mldsa65Verify,
+             echConfigList = echConfigList,
+             verifyPeerCertByName = verifyPeerCertByName,
+-            pinnedCA256 = pinnedCA256
++            pinnedCA256 = pinnedCA256,
++            dnsServers = if (configType == EConfigType.DNS) dnsServers.nullIfBlank() else null
+         )
+     }
+ 
+@@ -199,6 +227,14 @@ class ServerUiState(
+                 reserved = initialConfig.reserved ?: "0,0,0",
+                 localAddress = initialConfig.localAddress ?: WIREGUARD_LOCAL_ADDRESS_V4,
+                 mtu = initialConfig.mtu?.toString() ?: WIREGUARD_LOCAL_MTU,
++                awgJunkPacketCount = initialConfig.awgJunkPacketCount?.toString() ?: "",
++                awgJunkPacketMinSize = initialConfig.awgJunkPacketMinSize?.toString() ?: "",
++                awgJunkPacketMaxSize = initialConfig.awgJunkPacketMaxSize?.toString() ?: "",
++                awgInitPacketJunkSize = initialConfig.awgInitPacketJunkSize?.toString() ?: "",
++                awgResponsePacketJunkSize = initialConfig.awgResponsePacketJunkSize?.toString() ?: "",
++                awgInitPacketMagicHeader = initialConfig.awgInitPacketMagicHeader?.toString() ?: "",
++                awgResponsePacketMagicHeader = initialConfig.awgResponsePacketMagicHeader?.toString() ?: "",
++                awgUnderloadPacketMagicHeader = initialConfig.awgUnderloadPacketMagicHeader?.toString() ?: "",
+                 obfsPassword = initialConfig.obfsPassword ?: "",
+                 portHopping = initialConfig.portHopping ?: "",
+                 portHoppingInterval = initialConfig.portHoppingInterval ?: "",
+@@ -229,7 +265,8 @@ class ServerUiState(
+                 mldsa65Verify = initialConfig.mldsa65Verify ?: "",
+                 echConfigList = initialConfig.echConfigList ?: "",
+                 verifyPeerCertByName = initialConfig.verifyPeerCertByName ?: "",
+-                pinnedCA256 = initialConfig.pinnedCA256 ?: ""
++                pinnedCA256 = initialConfig.pinnedCA256 ?: "",
++                dnsServers = initialConfig.dnsServers ?: ""
+             )
+ 
+         fun from(
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/settings/SettingsActivity.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/settings/SettingsActivity.kt
+index a65d2fa7..f947e3f8 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/ui/settings/SettingsActivity.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/ui/settings/SettingsActivity.kt
+@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
+ import androidx.compose.runtime.saveable.rememberSaveable
+ import androidx.compose.runtime.setValue
+ import androidx.compose.ui.Modifier
++import androidx.compose.ui.platform.LocalContext
+ import androidx.compose.ui.res.stringArrayResource
+ import androidx.compose.ui.res.stringResource
+ import androidx.compose.ui.unit.dp
+@@ -40,6 +41,7 @@ import com.v2ray.ang.handler.MmkvManager
+ import com.v2ray.ang.handler.MmkvManager.rememberMmkvBool
+ import com.v2ray.ang.handler.MmkvManager.rememberMmkvString
+ import com.v2ray.ang.handler.SettingsChangeManager
++import com.v2ray.ang.mtproto.NativeProxy
+ import com.v2ray.ang.root.RootManager
+ import com.v2ray.ang.ui.base.BaseComponentActivity
+ import com.v2ray.ang.ui.compose.AppTopBar
+@@ -102,6 +104,7 @@ fun SettingsScreen(
+     onModeHelpClicked: () -> Unit,
+     onSystemVpnSettingsClicked: () -> Unit
+ ) {
++    val context = LocalContext.current
+     val scrollState = rememberScrollState()
+     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+     val systemVpnSettingsAvailable by viewModel.systemVpnSettingsAvailable.collectAsStateWithLifecycle()
+@@ -153,6 +156,9 @@ fun SettingsScreen(
+     var socksPassword by rememberMmkvString(AppConfig.PREF_SOCKS_PASSWORD, "")
+     var socksEnableUdp by rememberMmkvBool(AppConfig.PREF_SOCKS_ENABLE_UDP, AppConfig.DEFAULT_SOCKS_ENABLE_UDP)
+     var proxySharing by rememberMmkvBool(AppConfig.PREF_PROXY_SHARING, false)
++    var mirrlyEnabled by rememberMmkvBool(AppConfig.PREF_MIRRLY_ENABLED, false)
++    var mirrlyDomain by rememberMmkvString(AppConfig.PREF_MIRRLY_DOMAIN, "")
++    var mirrlyPort by rememberMmkvString(AppConfig.PREF_MIRRLY_PORT, "1443")
+ 
+     var speedEnabled by rememberMmkvBool(AppConfig.PREF_SPEED_ENABLED, false)
+     var confirmRemove by rememberMmkvBool(AppConfig.PREF_CONFIRM_REMOVE, false)
+@@ -473,6 +479,41 @@ fun SettingsScreen(
+                     enabled = effectiveLocalProxy,
+                     onCheckedChange = { socksEnableUdp = it }
+                 )
++                SettingsSwitchItem(
++                    title = stringResource(R.string.title_pref_mirrly_enabled),
++                    summary = stringResource(R.string.summary_pref_mirrly_enabled),
++                    checked = mirrlyEnabled,
++                    onCheckedChange = { enabled ->
++                        mirrlyEnabled = enabled
++                        val startDomain = mirrlyDomain
++                            .takeIf { it.isNotBlank() }
++                            ?: AppConfig.MIRRLY_DEFAULT_DOMAIN
++                        val startPort = mirrlyPort.toIntOrNull() ?: AppConfig.MIRRLY_DEFAULT_PORT
++                        if (enabled) {
++                            NativeProxy.start(startDomain, startPort, context) { code ->
++                                if (code != 0) {
++                                    mirrlyEnabled = false
++                                    context.toastError(context.getString(R.string.mirrly_status_failed, code))
++                                }
++                            }
++                        } else {
++                            NativeProxy.stop(context, clearEnabled = true)
++                        }
++                    }
++                )
++                SettingsEditItem(
++                    title = stringResource(R.string.mirrly_worker_domain),
++                    value = mirrlyDomain,
++                    enabled = mirrlyEnabled,
++                    onValueChanged = { mirrlyDomain = it }
++                )
++                SettingsEditItem(
++                    title = stringResource(R.string.mirrly_port),
++                    value = mirrlyPort,
++                    enabled = mirrlyEnabled,
++                    keyboardNumber = true,
++                    onValueChanged = { mirrlyPort = it }
++                )
+                 SettingsEditItem(
+                     title = stringResource(R.string.title_pref_remote_dns),
+                     value = remoteDns,
+diff --git a/V2rayNG/app/src/main/java/com/v2ray/ang/util/Utils.kt b/V2rayNG/app/src/main/java/com/v2ray/ang/util/Utils.kt
+index 1f4c4d3f..561ab4e9 100644
+--- a/V2rayNG/app/src/main/java/com/v2ray/ang/util/Utils.kt
++++ b/V2rayNG/app/src/main/java/com/v2ray/ang/util/Utils.kt
+@@ -106,6 +106,22 @@ object Utils {
+         return null
+     }
+ 
++    /**
++     * Public base64 decoder tolerant of missing padding and URL-safe alphabets.
++     *
++     * @param text The base64 encoded string.
++     * @return The decoded string, or null if decoding fails.
++     */
++    fun safeDecodeBase64(text: String?): String? {
++        if (text.isNullOrEmpty()) return null
++        val padding = when (text.length % 4) {
++            0 -> 0
++            else -> 4 - (text.length % 4)
++        }
++        val padded = text + "=".repeat(padding)
++        return tryDecodeBase64(padded) ?: tryDecodeBase64(text)
++    }
++
+     /**
+      * Encode a string to base64.
+      *
+diff --git a/V2rayNG/app/src/main/res/values-ar/strings.xml b/V2rayNG/app/src/main/res/values-ar/strings.xml
+index 0582cfd0..e95a15f8 100644
+--- a/V2rayNG/app/src/main/res/values-ar/strings.xml
++++ b/V2rayNG/app/src/main/res/values-ar/strings.xml
+@@ -41,6 +41,7 @@
+     <string name="menu_item_import_config_manually_http">إضافة [HTTP]</string>
+     <string name="menu_item_import_config_manually_trojan">إضافة [Trojan]</string>
+     <string name="menu_item_import_config_manually_wireguard">إضافة [WireGuard]</string>
++    <string name="menu_item_import_config_manually_amnezia">إضافة [AmneziaWG]</string>
+     <string name="menu_item_import_config_manually_hysteria2">إضافة [Hysteria2]</string>
+     <string name="confirm_delete_visible_profiles">هل أنت متأكد من أنك تريد حذف جميع ملفات التعريف المعروضة حاليًا؟</string>
+     <string name="confirm_delete_duplicate_profiles">هل أنت متأكد من أنك تريد حذف جميع ملفات التعريف المكررة المعروضة حاليًا؟</string>
+@@ -111,6 +112,9 @@
+     <string name="toast_require_file_manager">يرجى تثبيت مدير الملفات.</string>
+     <string name="server_customize_config">تخصيص التكوين</string>
+     <string name="toast_config_file_invalid">تكوين غير صالح</string>
++    <string name="toast_psiphon_unsupported">النواة الحالية لا تدعم بروتوكول Psiphon</string>
++    <string name="toast_slipnet_unsupported">أنفاق SlipNet غير مدعومة بواسطة النواة المدمجة</string>
++    <string name="toast_amnezia_unsupported">النواة الحالية لا تدعم تشويش AmneziaWG؛ امسح قيم S1/S2/H1/H2/H5 للاتصال كـ WireGuard عادي</string>
+     <string name="server_lab_content">المحتوى</string>
+     <string name="toast_none_data_clipboard">لا توجد بيانات في الحافظة</string>
+     <string name="toast_invalid_url">رابط URL غير صالح</string>
+@@ -551,4 +555,59 @@
+     <string name="connection_test_empty_message">لا تتوفر تفاصيل</string>
+     <string name="value_unknown">غير معروف</string>
+ 
++
++
++    <!-- DNS Changer -->
++    <string name="title_dns_changer">DNS changer</string>
++    <string name="dns_title_name">Name</string>
++    <string name="dns_title_ipv4_primary">IPv4 Primary</string>
++    <string name="dns_title_ipv4_secondary">IPv4 Secondary</string>
++    <string name="dns_title_ipv6_primary">IPv6 Primary</string>
++    <string name="dns_title_ipv6_secondary">IPv6 Secondary</string>
++    <string name="dns_title_select_profile">Select DNS profile</string>
++    <string name="dns_title_no_profiles">No DNS profiles. Create one above.</string>
++    <string name="dns_title_profile_activated">DNS profile activated</string>
++    <string name="dns_title_profile_deactivated">DNS profile deactivated</string>
++    <string name="dns_title_save_profile">Save profile</string>
++    <string name="dns_title_activate">Activate</string>
++    <string name="dns_title_deactivate">Deactivate</string>
++
++    <!-- DNS Ping Checker -->
++    <string name="title_dns_ping_checker">DNS Ping Checker</string>
++    <string name="dns_title_server">DNS Server</string>
++    <string name="dns_hint_multi_server">افصل بين عدة خوادم بفواصل</string>
++    <string name="dns_title_domain">Domain</string>
++    <string name="dns_title_ping">Ping</string>
++    <string name="dns_title_latency">Latency: %1$s ms</string>
++    <string name="dns_title_timeout">Timeout</string>
++    <string name="dns_title_no_result">No result</string>
++
++    <!-- Psiphon -->
++    <string name="dns_title_psiphon_region">Region</string>
++    <string name="title_pref_mirrly_enabled">Mirrly TG Proxy</string>
++    <string name="summary_pref_mirrly_enabled">Enable the Mirrly Telegram proxy settings</string>
++    <string name="menu_item_mirrly_tg_proxy">ميرللي TG بروكسي</string>
++    <string name="mirrly_worker_domain">نطاق Cloudflare Worker</string>
++    <string name="menu_item_import_config_slipnet_paste">لصق تكوين SlipNet</string>
++    <string name="paste_hint_wireguard">[Interface]\nPrivateKey = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = ...</string>
++    <string name="paste_hint_slipnet">slipnet://&lt;إعدادات النفق المشفرة base64&gt;</string>
++    <string name="slipnet_title_tunnel_type">نوع النفق</string>
++    <string name="slipnet_title_resolvers">خوادم الحل</string>
++    <string name="slipnet_title_public_key">المفتاح العام للخادم</string>
++    <string name="slipnet_title_config">الإعدادات</string>
++    <string name="mirrly_port">المنفذ المحلي</string>
++    <string name="mirrly_status_running">يعمل البروكسي على 127.0.0.1:%1$d</string>
++    <string name="mirrly_status_failed">فشل بدء البروكسي (رمز %1$d)</string>
++    <string name="server_lab_amnezia_jc">Jc - junk packet count</string>
++    <string name="server_lab_amnezia_jmin">Jmin - min junk packet size</string>
++    <string name="server_lab_amnezia_jmax">Jmax - max junk packet size</string>
++    <string name="server_lab_amnezia_s1">S1 - init junk size</string>
++    <string name="server_lab_amnezia_s2">S2 - response junk size</string>
++    <string name="server_lab_amnezia_h1">H1 - init magic header</string>
++    <string name="server_lab_amnezia_h2">H2 - response magic header</string>
++    <string name="server_lab_amnezia_h5">H5 - underload magic header</string>
++    <string name="string_search">بحث</string>
++    <string name="acc_menu">قائمة</string>
++    <string name="acc_close">إغلاق</string>
++    <string name="acc_more_options">خيارات إضافية</string>
+ </resources>
+diff --git a/V2rayNG/app/src/main/res/values-bn/strings.xml b/V2rayNG/app/src/main/res/values-bn/strings.xml
+index b2dd61d4..e6af884b 100644
+--- a/V2rayNG/app/src/main/res/values-bn/strings.xml
++++ b/V2rayNG/app/src/main/res/values-bn/strings.xml
+@@ -41,6 +41,7 @@
+     <string name="menu_item_import_config_manually_http">[HTTP] যোগ করুন</string>
+     <string name="menu_item_import_config_manually_trojan">[Trojan] যোগ করুন</string>
+     <string name="menu_item_import_config_manually_wireguard">[WireGuard] যোগ করুন</string>
++    <string name="menu_item_import_config_manually_amnezia">[AmneziaWG] যোগ করুন</string>
+     <string name="menu_item_import_config_manually_hysteria2">[Hysteria2] যোগ করুন</string>
+     <string name="confirm_delete_visible_profiles">আপনি কি বর্তমানে প্রদর্শিত সব প্রোফাইল মুছে ফেলতে চান?</string>
+     <string name="confirm_delete_duplicate_profiles">আপনি কি বর্তমানে প্রদর্শিত সব সদৃশ প্রোফাইল মুছে ফেলতে চান?</string>
+@@ -111,6 +112,9 @@
+     <string name="toast_require_file_manager">অনুগ্রহ করে একটি ফাইল ম্যানেজার ইনস্টল করুন।</string>
+     <string name="server_customize_config">কাস্টমাইজ কনফিগারেশন</string>
+     <string name="toast_config_file_invalid">অবৈধ কনফিগারেশন</string>
++    <string name="toast_psiphon_unsupported">বর্তমান কোর Psiphon প্রোটোকল সমর্থন করে না</string>
++    <string name="toast_slipnet_unsupported">SlipNet টানেল বান্ডেল করা কোর দ্বারা সমর্থিত নয়</string>
++    <string name="toast_amnezia_unsupported">বর্তমান কোর AmneziaWG অবস্ফাকেশন সমর্থন করে না; সাধারণ WireGuard সংযোগের জন্য S1/S2/H1/H2/H5 মান মুছুন</string>
+     <string name="server_lab_content">কনটেন্ট</string>
+     <string name="toast_none_data_clipboard">ক্লিপবোর্ডে কোনও তথ্য নেই</string>
+     <string name="toast_invalid_url">অবৈধ URL</string>
+@@ -551,4 +555,59 @@
+     <string name="connection_test_empty_message">কোনো বিবরণ পাওয়া যায়নি</string>
+     <string name="value_unknown">অজানা</string>
+ 
++
++
++    <!-- DNS Changer -->
++    <string name="title_dns_changer">DNS changer</string>
++    <string name="dns_title_name">Name</string>
++    <string name="dns_title_ipv4_primary">IPv4 Primary</string>
++    <string name="dns_title_ipv4_secondary">IPv4 Secondary</string>
++    <string name="dns_title_ipv6_primary">IPv6 Primary</string>
++    <string name="dns_title_ipv6_secondary">IPv6 Secondary</string>
++    <string name="dns_title_select_profile">Select DNS profile</string>
++    <string name="dns_title_no_profiles">No DNS profiles. Create one above.</string>
++    <string name="dns_title_profile_activated">DNS profile activated</string>
++    <string name="dns_title_profile_deactivated">DNS profile deactivated</string>
++    <string name="dns_title_save_profile">Save profile</string>
++    <string name="dns_title_activate">Activate</string>
++    <string name="dns_title_deactivate">Deactivate</string>
++
++    <!-- DNS Ping Checker -->
++    <string name="title_dns_ping_checker">DNS Ping Checker</string>
++    <string name="dns_title_server">DNS Server</string>
++    <string name="dns_hint_multi_server">একাধিক সার্ভার কমা দিয়ে আলাদা করুন</string>
++    <string name="dns_title_domain">Domain</string>
++    <string name="dns_title_ping">Ping</string>
++    <string name="dns_title_latency">Latency: %1$s ms</string>
++    <string name="dns_title_timeout">Timeout</string>
++    <string name="dns_title_no_result">No result</string>
++
++    <!-- Psiphon -->
++    <string name="dns_title_psiphon_region">Region</string>
++    <string name="title_pref_mirrly_enabled">Mirrly TG Proxy</string>
++    <string name="summary_pref_mirrly_enabled">Enable the Mirrly Telegram proxy settings</string>
++    <string name="menu_item_mirrly_tg_proxy">Mirrly TG প্রক্সি</string>
++    <string name="mirrly_worker_domain">Cloudflare Worker ডোমেইন</string>
++    <string name="menu_item_import_config_slipnet_paste">SlipNet কনফিগ পেস্ট করুন</string>
++    <string name="paste_hint_wireguard">[Interface]\nPrivateKey = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = ...</string>
++    <string name="paste_hint_slipnet">slipnet://&lt;base64-এনকোড টানেল সেটিং&gt;</string>
++    <string name="slipnet_title_tunnel_type">টানেলের ধরন</string>
++    <string name="slipnet_title_resolvers">রিজলভার</string>
++    <string name="slipnet_title_public_key">সার্বার পাবলিক কি</string>
++    <string name="slipnet_title_config">কনফিগ</string>
++    <string name="mirrly_port">লোকাল পোর্ট</string>
++    <string name="mirrly_status_running">প্রক্সি 127.0.0.1:%1$d এ চলছে</string>
++    <string name="mirrly_status_failed">প্রক্সি শুরু ব্যর্থ হয়েছে (কোড %1$d)</string>
++    <string name="server_lab_amnezia_jc">Jc - junk packet count</string>
++    <string name="server_lab_amnezia_jmin">Jmin - min junk packet size</string>
++    <string name="server_lab_amnezia_jmax">Jmax - max junk packet size</string>
++    <string name="server_lab_amnezia_s1">S1 - init junk size</string>
++    <string name="server_lab_amnezia_s2">S2 - response junk size</string>
++    <string name="server_lab_amnezia_h1">H1 - init magic header</string>
++    <string name="server_lab_amnezia_h2">H2 - response magic header</string>
++    <string name="server_lab_amnezia_h5">H5 - underload magic header</string>
++    <string name="string_search">অনুসন্ধান</string>
++    <string name="acc_menu">মেনু</string>
++    <string name="acc_close">বন্ধ</string>
++    <string name="acc_more_options">আরও বিকল্প</string>
+ </resources>
+diff --git a/V2rayNG/app/src/main/res/values-bqi-rIR/strings.xml b/V2rayNG/app/src/main/res/values-bqi-rIR/strings.xml
+index d1deb211..1e189023 100644
+--- a/V2rayNG/app/src/main/res/values-bqi-rIR/strings.xml
++++ b/V2rayNG/app/src/main/res/values-bqi-rIR/strings.xml
+@@ -41,6 +41,7 @@
+     <string name="menu_item_import_config_manually_http">ٱووردن [HTTP]</string>
+     <string name="menu_item_import_config_manually_trojan">ٱووردن [Trojan]</string>
+     <string name="menu_item_import_config_manually_wireguard">ٱووردن [WireGuard]</string>
++    <string name="menu_item_import_config_manually_amnezia">ٱووردن [AmneziaWG]</string>
+     <string name="menu_item_import_config_manually_hysteria2">ٱووردن [Hysteria2]</string>
+     <string name="confirm_delete_visible_profiles">پوی کانفیگا ک هیم سکو نشووݩ داڌه ابۊن پاک ابۊن، هنی هم اخۊی پاکسووݩ کۊنی؟</string>
+     <string name="confirm_delete_duplicate_profiles">پوی کانفیگا تکراری ک هیم سکو نشووݩ داڌه ابۊن پاک ابۊن، هنی هم اخۊی پاکسووݩ کۊنی؟</string>
+@@ -111,6 +112,9 @@
+     <string name="toast_require_file_manager">ی برنومه دؽوۉداری فایل بپۊرنین.</string>
+     <string name="server_customize_config">کانفیگ سفارشی</string>
+     <string name="toast_config_file_invalid">کانفیگ نا موئتبر هڌ</string>
++    <string name="toast_psiphon_unsupported">هسته فعلی از پروتکل Psiphon پشتیبانی نمی‌کند</string>
++    <string name="toast_slipnet_unsupported">تونل‌های SlipNet توسط هستهٔ داخلی پشتیبانی نمی‌شوند</string>
++    <string name="toast_amnezia_unsupported">هسته فعلی از مبهم‌سازی AmneziaWG پشتیبانی نمی‌کند؛ برای اتصال به‌صورت WireGuard معمولی مقادیر S1/S2/H1/H2/H5 را پاک کنید</string>
+     <string name="server_lab_content">محتوا</string>
+     <string name="toast_none_data_clipboard">هیچ داڌه ای من کلیپ بورد وۊجۊڌ نڌاره</string>
+     <string name="toast_invalid_url">نشۊوی اینترنتی نا موئتبر هڌ</string>
+@@ -551,4 +555,59 @@
+     <string name="connection_test_empty_message">دووسمندی نؽ</string>
+     <string name="value_unknown">نا مؽخص</string>
+ 
++
++
++    <!-- DNS Changer -->
++    <string name="title_dns_changer">DNS changer</string>
++    <string name="dns_title_name">Name</string>
++    <string name="dns_title_ipv4_primary">IPv4 Primary</string>
++    <string name="dns_title_ipv4_secondary">IPv4 Secondary</string>
++    <string name="dns_title_ipv6_primary">IPv6 Primary</string>
++    <string name="dns_title_ipv6_secondary">IPv6 Secondary</string>
++    <string name="dns_title_select_profile">Select DNS profile</string>
++    <string name="dns_title_no_profiles">No DNS profiles. Create one above.</string>
++    <string name="dns_title_profile_activated">DNS profile activated</string>
++    <string name="dns_title_profile_deactivated">DNS profile deactivated</string>
++    <string name="dns_title_save_profile">Save profile</string>
++    <string name="dns_title_activate">Activate</string>
++    <string name="dns_title_deactivate">Deactivate</string>
++
++    <!-- DNS Ping Checker -->
++    <string name="title_dns_ping_checker">DNS Ping Checker</string>
++    <string name="dns_title_server">DNS Server</string>
++    <string name="dns_hint_multi_server">چند سرور ره با کاما جدا کُن</string>
++    <string name="dns_title_domain">Domain</string>
++    <string name="dns_title_ping">Ping</string>
++    <string name="dns_title_latency">Latency: %1$s ms</string>
++    <string name="dns_title_timeout">Timeout</string>
++    <string name="dns_title_no_result">No result</string>
++
++    <!-- Psiphon -->
++    <string name="dns_title_psiphon_region">Region</string>
++    <string name="title_pref_mirrly_enabled">Mirrly TG Proxy</string>
++    <string name="summary_pref_mirrly_enabled">Enable the Mirrly Telegram proxy settings</string>
++    <string name="menu_item_mirrly_tg_proxy">پراکسی تلگرام Mirrly</string>
++    <string name="mirrly_worker_domain">دامنه Cloudflare Worker</string>
++    <string name="menu_item_import_config_slipnet_paste">کپی کردن کانفیگ SlipNet</string>
++    <string name="paste_hint_wireguard">[Interface]\nPrivateKey = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = ...</string>
++    <string name="paste_hint_slipnet">slipnet://&lt;تنظیمات تونل کداینگ base64&gt;</string>
++    <string name="slipnet_title_tunnel_type">نوع تونل</string>
++    <string name="slipnet_title_resolvers">حل‌کننده‌ها</string>
++    <string name="slipnet_title_public_key">کلید عمومی سرور</string>
++    <string name="slipnet_title_config">کانفیگ</string>
++    <string name="mirrly_port">پورت محلی</string>
++    <string name="mirrly_status_running">پراکسی روی 127.0.0.1:%1$d در حال اجراست</string>
++    <string name="mirrly_status_failed">شروع پراکسی ناموفق بود (کد %1$d)</string>
++    <string name="server_lab_amnezia_jc">Jc - junk packet count</string>
++    <string name="server_lab_amnezia_jmin">Jmin - min junk packet size</string>
++    <string name="server_lab_amnezia_jmax">Jmax - max junk packet size</string>
++    <string name="server_lab_amnezia_s1">S1 - init junk size</string>
++    <string name="server_lab_amnezia_s2">S2 - response junk size</string>
++    <string name="server_lab_amnezia_h1">H1 - init magic header</string>
++    <string name="server_lab_amnezia_h2">H2 - response magic header</string>
++    <string name="server_lab_amnezia_h5">H5 - underload magic header</string>
++    <string name="string_search">پیتینیڌن</string>
++    <string name="acc_menu">منو</string>
++    <string name="acc_close">بستن</string>
++    <string name="acc_more_options">گزینههای وڌتر</string>
+ </resources>
+diff --git a/V2rayNG/app/src/main/res/values-fa/strings.xml b/V2rayNG/app/src/main/res/values-fa/strings.xml
+index f5db2f9c..f3d01fcc 100644
+--- a/V2rayNG/app/src/main/res/values-fa/strings.xml
++++ b/V2rayNG/app/src/main/res/values-fa/strings.xml
+@@ -41,6 +41,7 @@
+     <string name="menu_item_import_config_manually_http">افزودن [HTTP]</string>
+     <string name="menu_item_import_config_manually_trojan">افزودن [Trojan]</string>
+     <string name="menu_item_import_config_manually_wireguard">افزودن [WireGuard]</string>
++    <string name="menu_item_import_config_manually_amnezia">افزودن [AmneziaWG]</string>
+     <string name="menu_item_import_config_manually_hysteria2">افزودن [Hysteria2]</string>
+     <string name="confirm_delete_visible_profiles">آیا مطمئن هستید که می‌خواهید همه پروفایل‌های نمایش‌داده‌شده را حذف کنید؟</string>
+     <string name="confirm_delete_duplicate_profiles">آیا مطمئن هستید که می‌خواهید همه پروفایل‌های تکراری نمایش‌داده‌شده را حذف کنید؟</string>
+@@ -111,6 +112,9 @@
+     <string name="toast_require_file_manager">لطفا یک برنامه مدیریت فایل نصب کنید.</string>
+     <string name="server_customize_config">کانفیگ سفارشی</string>
+     <string name="toast_config_file_invalid">کانفیگ معتبر نیست</string>
++    <string name="toast_psiphon_unsupported">هسته فعلی از پروتکل Psiphon پشتیبانی نمی‌کند</string>
++    <string name="toast_slipnet_unsupported">تونل‌های SlipNet توسط هستهٔ داخلی پشتیبانی نمی‌شوند</string>
++    <string name="toast_amnezia_unsupported">هسته فعلی از مبهم‌سازی AmneziaWG پشتیبانی نمی‌کند؛ برای اتصال به‌صورت WireGuard معمولی مقادیر S1/S2/H1/H2/H5 را پاک کنید</string>
+     <string name="server_lab_content">محتوا</string>
+     <string name="toast_none_data_clipboard">داده‌ای در کلیپ‌بورد وجود ندارد</string>
+     <string name="toast_invalid_url">نشانی اینترنتی نامعتبر است</string>
+@@ -551,4 +555,59 @@
+     <string name="connection_test_empty_message">جزئیاتی در دسترس نیست</string>
+     <string name="value_unknown">ناشناخته</string>
+ 
++
++
++    <!-- DNS Changer -->
++    <string name="title_dns_changer">DNS changer</string>
++    <string name="dns_title_name">Name</string>
++    <string name="dns_title_ipv4_primary">IPv4 Primary</string>
++    <string name="dns_title_ipv4_secondary">IPv4 Secondary</string>
++    <string name="dns_title_ipv6_primary">IPv6 Primary</string>
++    <string name="dns_title_ipv6_secondary">IPv6 Secondary</string>
++    <string name="dns_title_select_profile">Select DNS profile</string>
++    <string name="dns_title_no_profiles">No DNS profiles. Create one above.</string>
++    <string name="dns_title_profile_activated">DNS profile activated</string>
++    <string name="dns_title_profile_deactivated">DNS profile deactivated</string>
++    <string name="dns_title_save_profile">Save profile</string>
++    <string name="dns_title_activate">Activate</string>
++    <string name="dns_title_deactivate">Deactivate</string>
++
++    <!-- DNS Ping Checker -->
++    <string name="title_dns_ping_checker">DNS Ping Checker</string>
++    <string name="dns_title_server">DNS Server</string>
++    <string name="dns_hint_multi_server">چند سرور را با کاما جدا کنید</string>
++    <string name="dns_title_domain">Domain</string>
++    <string name="dns_title_ping">Ping</string>
++    <string name="dns_title_latency">Latency: %1$s ms</string>
++    <string name="dns_title_timeout">Timeout</string>
++    <string name="dns_title_no_result">No result</string>
++
++    <!-- Psiphon -->
++    <string name="dns_title_psiphon_region">Region</string>
++    <string name="title_pref_mirrly_enabled">Mirrly TG Proxy</string>
++    <string name="summary_pref_mirrly_enabled">Enable the Mirrly Telegram proxy settings</string>
++    <string name="menu_item_mirrly_tg_proxy">پراکسی تلگرام Mirrly</string>
++    <string name="mirrly_worker_domain">دامنه Cloudflare Worker</string>
++    <string name="menu_item_import_config_slipnet_paste">چسباندن کانفیگ SlipNet</string>
++    <string name="paste_hint_wireguard">[Interface]\nPrivateKey = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = ...</string>
++    <string name="paste_hint_slipnet">slipnet://&lt;تنظیمات تونل کدشده base64&gt;</string>
++    <string name="slipnet_title_tunnel_type">نوع تونل</string>
++    <string name="slipnet_title_resolvers">حل‌کننده‌ها</string>
++    <string name="slipnet_title_public_key">کلید عمومی سرور</string>
++    <string name="slipnet_title_config">پیکربندی</string>
++    <string name="mirrly_port">پورت محلی</string>
++    <string name="mirrly_status_running">پراکسی روی 127.0.0.1:%1$d در حال اجراست</string>
++    <string name="mirrly_status_failed">شروع پراکسی ناموفق بود (کد %1$d)</string>
++    <string name="server_lab_amnezia_jc">Jc - junk packet count</string>
++    <string name="server_lab_amnezia_jmin">Jmin - min junk packet size</string>
++    <string name="server_lab_amnezia_jmax">Jmax - max junk packet size</string>
++    <string name="server_lab_amnezia_s1">S1 - init junk size</string>
++    <string name="server_lab_amnezia_s2">S2 - response junk size</string>
++    <string name="server_lab_amnezia_h1">H1 - init magic header</string>
++    <string name="server_lab_amnezia_h2">H2 - response magic header</string>
++    <string name="server_lab_amnezia_h5">H5 - underload magic header</string>
++    <string name="string_search">جستجو</string>
++    <string name="acc_menu">منو</string>
++    <string name="acc_close">بستن</string>
++    <string name="acc_more_options">گزینههای بیشتر</string>
+ </resources>
+diff --git a/V2rayNG/app/src/main/res/values-ru/strings.xml b/V2rayNG/app/src/main/res/values-ru/strings.xml
+index 3f3d9007..072a9835 100644
+--- a/V2rayNG/app/src/main/res/values-ru/strings.xml
++++ b/V2rayNG/app/src/main/res/values-ru/strings.xml
+@@ -41,6 +41,7 @@
+     <string name="menu_item_import_config_manually_http">Добавить HTTP</string>
+     <string name="menu_item_import_config_manually_trojan">Добавить Trojan</string>
+     <string name="menu_item_import_config_manually_wireguard">Добавить WireGuard</string>
++    <string name="menu_item_import_config_manually_amnezia">Добавить AmneziaWG</string>
+     <string name="menu_item_import_config_manually_hysteria2">Добавить Hysteria2</string>
+     <string name="confirm_delete_visible_profiles">Удалить все отображаемые профили?</string>
+     <string name="confirm_delete_duplicate_profiles">Удалить все отображаемые дубликаты профилей?</string>
+@@ -111,6 +112,9 @@
+     <string name="toast_require_file_manager">Установите файловый менеджер</string>
+     <string name="server_customize_config">Изменить профиль</string>
+     <string name="toast_config_file_invalid">Неправильный профиль</string>
++    <string name="toast_psiphon_unsupported">Встроенное ядро не поддерживает протокол Psiphon</string>
++    <string name="toast_slipnet_unsupported">Туннели SlipNet не поддерживаются встроенным ядром</string>
++    <string name="toast_amnezia_unsupported">Встроенное ядро не поддерживает обфускацию AmneziaWG; очистите значения S1/S2/H1/H2/H5 для подключения как обычный WireGuard</string>
+     <string name="server_lab_content">Данные</string>
+     <string name="toast_none_data_clipboard">В буфере обмена нет данных</string>
+     <string name="toast_invalid_url">Неправильный URL</string>
+@@ -551,4 +555,59 @@
+     <string name="connection_test_empty_message">подробности отсутствуют</string>
+     <string name="value_unknown">неизвестно</string>
+ 
++
++
++    <!-- DNS Changer -->
++    <string name="title_dns_changer">DNS changer</string>
++    <string name="dns_title_name">Name</string>
++    <string name="dns_title_ipv4_primary">IPv4 Primary</string>
++    <string name="dns_title_ipv4_secondary">IPv4 Secondary</string>
++    <string name="dns_title_ipv6_primary">IPv6 Primary</string>
++    <string name="dns_title_ipv6_secondary">IPv6 Secondary</string>
++    <string name="dns_title_select_profile">Select DNS profile</string>
++    <string name="dns_title_no_profiles">No DNS profiles. Create one above.</string>
++    <string name="dns_title_profile_activated">DNS profile activated</string>
++    <string name="dns_title_profile_deactivated">DNS profile deactivated</string>
++    <string name="dns_title_save_profile">Save profile</string>
++    <string name="dns_title_activate">Activate</string>
++    <string name="dns_title_deactivate">Deactivate</string>
++
++    <!-- DNS Ping Checker -->
++    <string name="title_dns_ping_checker">DNS Ping Checker</string>
++    <string name="dns_title_server">DNS Server</string>
++    <string name="dns_hint_multi_server">Разделяйте несколько серверов запятыми</string>
++    <string name="dns_title_domain">Domain</string>
++    <string name="dns_title_ping">Ping</string>
++    <string name="dns_title_latency">Latency: %1$s ms</string>
++    <string name="dns_title_timeout">Timeout</string>
++    <string name="dns_title_no_result">No result</string>
++
++    <!-- Psiphon -->
++    <string name="dns_title_psiphon_region">Region</string>
++    <string name="title_pref_mirrly_enabled">Mirrly TG Proxy</string>
++    <string name="summary_pref_mirrly_enabled">Enable the Mirrly Telegram proxy settings</string>
++    <string name="menu_item_mirrly_tg_proxy">Mirrly TG-прокси</string>
++    <string name="mirrly_worker_domain">Домен Cloudflare Worker</string>
++    <string name="menu_item_import_config_slipnet_paste">Вставить конфиг SlipNet</string>
++    <string name="paste_hint_wireguard">[Interface]\nPrivateKey = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = ...</string>
++    <string name="paste_hint_slipnet">slipnet://&lt;настройки туннеля в base64&gt;</string>
++    <string name="slipnet_title_tunnel_type">Тип туннеля</string>
++    <string name="slipnet_title_resolvers">Резолверы</string>
++    <string name="slipnet_title_public_key">Открытый ключ сервера</string>
++    <string name="slipnet_title_config">Конфиг</string>
++    <string name="mirrly_port">Локальный порт</string>
++    <string name="mirrly_status_running">Прокси работает на 127.0.0.1:%1$d</string>
++    <string name="mirrly_status_failed">Не удалось запустить прокси (код %1$d)</string>
++    <string name="server_lab_amnezia_jc">Jc - junk packet count</string>
++    <string name="server_lab_amnezia_jmin">Jmin - min junk packet size</string>
++    <string name="server_lab_amnezia_jmax">Jmax - max junk packet size</string>
++    <string name="server_lab_amnezia_s1">S1 - init junk size</string>
++    <string name="server_lab_amnezia_s2">S2 - response junk size</string>
++    <string name="server_lab_amnezia_h1">H1 - init magic header</string>
++    <string name="server_lab_amnezia_h2">H2 - response magic header</string>
++    <string name="server_lab_amnezia_h5">H5 - underload magic header</string>
++    <string name="string_search">Поиск</string>
++    <string name="acc_menu">Меню</string>
++    <string name="acc_close">Закрыть</string>
++    <string name="acc_more_options">Дополнительные параметры</string>
+ </resources>
+diff --git a/V2rayNG/app/src/main/res/values-vi/strings.xml b/V2rayNG/app/src/main/res/values-vi/strings.xml
+index 4e7f3d4f..98bb082b 100644
+--- a/V2rayNG/app/src/main/res/values-vi/strings.xml
++++ b/V2rayNG/app/src/main/res/values-vi/strings.xml
+@@ -41,6 +41,7 @@
+     <string name="menu_item_import_config_manually_http">Thêm [HTTP]</string>
+     <string name="menu_item_import_config_manually_trojan">Thêm [Trojan]</string>
+     <string name="menu_item_import_config_manually_wireguard">Thêm [WireGuard]</string>
++    <string name="menu_item_import_config_manually_amnezia">Thêm [AmneziaWG]</string>
+     <string name="menu_item_import_config_manually_hysteria2">Thêm [Hysteria2]</string>
+     <string name="confirm_delete_visible_profiles">Bạn có chắc muốn xóa tất cả cấu hình đang hiển thị không?</string>
+     <string name="confirm_delete_duplicate_profiles">Bạn có chắc muốn xóa tất cả cấu hình trùng lặp đang hiển thị không?</string>
+@@ -111,6 +112,9 @@
+     <string name="toast_require_file_manager">Vui lòng cài đặt trình quản lý tệp để tiếp tục!</string>
+     <string name="server_customize_config">Cấu hình tùy chỉnh</string>
+     <string name="toast_config_file_invalid">Cấu hình không hợp lệ!</string>
++    <string name="toast_psiphon_unsupported">Nhân không hỗ trợ giao thức Psiphon</string>
++    <string name="toast_slipnet_unsupported">Đường hầm SlipNet không được hỗ trợ bởi lõi kèm theo</string>
++    <string name="toast_amnezia_unsupported">Nhân hiện không hỗ trợ khả năng che giấu AmneziaWG; hãy xóa S1/S2/H1/H2/H5 để kết nối WireGuard thông thường</string>
+     <string name="server_lab_content">Nội dung</string>
+     <string name="toast_none_data_clipboard">Không có dữ liệu trong bảng tạm!</string>
+     <string name="toast_invalid_url">URL không hợp lệ hoặc trống!</string>
+@@ -551,4 +555,59 @@
+     <string name="connection_test_empty_message">không có thông tin chi tiết</string>
+     <string name="value_unknown">không xác định</string>
+ 
++
++
++    <!-- DNS Changer -->
++    <string name="title_dns_changer">Đổi DNS</string>
++    <string name="dns_title_name">Name</string>
++    <string name="dns_title_ipv4_primary">IPv4 Chính</string>
++    <string name="dns_title_ipv4_secondary">IPv4 Phụ</string>
++    <string name="dns_title_ipv6_primary">IPv6 Chính</string>
++    <string name="dns_title_ipv6_secondary">IPv6 Phụ</string>
++    <string name="dns_title_select_profile">Chọn hồ sơ DNS</string>
++    <string name="dns_title_no_profiles">Không có hồ sơ DNS. Hãy tạo ở trên.</string>
++    <string name="dns_title_profile_activated">Đã kích hoạt hồ sơ DNS</string>
++    <string name="dns_title_profile_deactivated">Đã vô hiệu hóa hồ sơ DNS</string>
++    <string name="dns_title_save_profile">Lưu hồ sơ</string>
++    <string name="dns_title_activate">Kích hoạt</string>
++    <string name="dns_title_deactivate">Vô hiệu hóa</string>
++
++    <!-- DNS Ping Checker -->
++    <string name="title_dns_ping_checker">Kiểm tra DNS Ping</string>
++    <string name="dns_title_server">Máy chủ DNS</string>
++    <string name="dns_hint_multi_server">Phân tách nhiều máy chủ bằng dấu phẩy</string>
++    <string name="dns_title_domain">Tên miền</string>
++    <string name="dns_title_ping">Ping</string>
++    <string name="dns_title_latency">Độ trễ: %1$s ms</string>
++    <string name="dns_title_timeout">Hết thời gian</string>
++    <string name="dns_title_no_result">Không có kết quả</string>
++
++    <!-- Psiphon -->
++    <string name="dns_title_psiphon_region">Khu vực</string>
++    <string name="title_pref_mirrly_enabled">Mirrly TG Proxy</string>
++    <string name="summary_pref_mirrly_enabled">Enable the Mirrly Telegram proxy settings</string>
++    <string name="menu_item_mirrly_tg_proxy">Mirrly TG proxy</string>
++    <string name="mirrly_worker_domain">Tên miền Cloudflare Worker</string>
++    <string name="menu_item_import_config_slipnet_paste">Dán cấu hình SlipNet</string>
++    <string name="paste_hint_wireguard">[Interface]\nPrivateKey = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = ...</string>
++    <string name="paste_hint_slipnet">slipnet://&lt;cấu hình đường hầm mã hóa base64&gt;</string>
++    <string name="slipnet_title_tunnel_type">Loại đường hầm</string>
++    <string name="slipnet_title_resolvers">Trình phân giải</string>
++    <string name="slipnet_title_public_key">Khóa công khai máy chủ</string>
++    <string name="slipnet_title_config">Cấu hình</string>
++    <string name="mirrly_port">Cổng local</string>
++    <string name="mirrly_status_running">Proxy đang chạy tại 127.0.0.1:%1$d</string>
++    <string name="mirrly_status_failed">Không thể khởi động proxy (mã %1$d)</string>
++    <string name="server_lab_amnezia_jc">Jc - junk packet count</string>
++    <string name="server_lab_amnezia_jmin">Jmin - min junk packet size</string>
++    <string name="server_lab_amnezia_jmax">Jmax - max junk packet size</string>
++    <string name="server_lab_amnezia_s1">S1 - init junk size</string>
++    <string name="server_lab_amnezia_s2">S2 - response junk size</string>
++    <string name="server_lab_amnezia_h1">H1 - init magic header</string>
++    <string name="server_lab_amnezia_h2">H2 - response magic header</string>
++    <string name="server_lab_amnezia_h5">H5 - underload magic header</string>
++    <string name="string_search">Tìm kiếm</string>
++    <string name="acc_menu">Menu</string>
++    <string name="acc_close">Đóng</string>
++    <string name="acc_more_options">Tùy chọn khác</string>
+ </resources>
+diff --git a/V2rayNG/app/src/main/res/values-zh-rCN/strings.xml b/V2rayNG/app/src/main/res/values-zh-rCN/strings.xml
+index 3e375eff..a541e874 100644
+--- a/V2rayNG/app/src/main/res/values-zh-rCN/strings.xml
++++ b/V2rayNG/app/src/main/res/values-zh-rCN/strings.xml
+@@ -41,6 +41,7 @@
+     <string name="menu_item_import_config_manually_http">添加 [HTTP]</string>
+     <string name="menu_item_import_config_manually_trojan">添加 [Trojan]</string>
+     <string name="menu_item_import_config_manually_wireguard">添加 [WireGuard]</string>
++    <string name="menu_item_import_config_manually_amnezia">添加 [AmneziaWG]</string>
+     <string name="menu_item_import_config_manually_hysteria2">添加 [Hysteria2]</string>
+     <string name="confirm_delete_visible_profiles">确定要删除当前显示的所有配置吗？</string>
+     <string name="confirm_delete_duplicate_profiles">确定要删除当前显示的所有重复配置吗？</string>
+@@ -111,6 +112,9 @@
+     <string name="toast_require_file_manager">请安装一个文件管理器</string>
+     <string name="server_customize_config">自定义配置</string>
+     <string name="toast_config_file_invalid">无效的配置</string>
++    <string name="toast_psiphon_unsupported">当前核心不支持 Psiphon 协议</string>
++    <string name="toast_slipnet_unsupported">SlipNet 隧道不受内置内核支持</string>
++    <string name="toast_amnezia_unsupported">当前核心不支持 AmneziaWG 混淆；清除 S1/S2/H1/H2/H5 值可按普通 WireGuard 连接</string>
+     <string name="server_lab_content">内容</string>
+     <string name="toast_none_data_clipboard">剪贴板中没有数据</string>
+     <string name="toast_invalid_url">无效的网址</string>
+@@ -551,4 +555,59 @@
+     <string name="connection_test_empty_message">无详细信息</string>
+     <string name="value_unknown">未知</string>
+ 
++
++
++    <!-- DNS Changer -->
++    <string name="title_dns_changer">DNS 更改器</string>
++    <string name="dns_title_name">名称</string>
++    <string name="dns_title_ipv4_primary">IPv4 主 DNS</string>
++    <string name="dns_title_ipv4_secondary">IPv4 备 DNS</string>
++    <string name="dns_title_ipv6_primary">IPv6 主 DNS</string>
++    <string name="dns_title_ipv6_secondary">IPv6 备 DNS</string>
++    <string name="dns_title_select_profile">选择 DNS 配置</string>
++    <string name="dns_title_no_profiles">暂无 DNS 配置，请在上方创建。</string>
++    <string name="dns_title_profile_activated">DNS 配置已激活</string>
++    <string name="dns_title_profile_deactivated">DNS 配置已停用</string>
++    <string name="dns_title_save_profile">保存配置</string>
++    <string name="dns_title_activate">激活</string>
++    <string name="dns_title_deactivate">停用</string>
++
++    <!-- DNS Ping Checker -->
++    <string name="title_dns_ping_checker">DNS Ping 检测器</string>
++    <string name="dns_title_server">DNS 服务器</string>
++    <string name="dns_hint_multi_server">用逗号分隔多个服务器</string>
++    <string name="dns_title_domain">域名</string>
++    <string name="dns_title_ping">Ping</string>
++    <string name="dns_title_latency">延迟: %1$s ms</string>
++    <string name="dns_title_timeout">超时</string>
++    <string name="dns_title_no_result">无结果</string>
++
++    <!-- Psiphon -->
++    <string name="dns_title_psiphon_region">地区</string>
++    <string name="title_pref_mirrly_enabled">Mirrly TG Proxy</string>
++    <string name="summary_pref_mirrly_enabled">Enable the Mirrly Telegram proxy settings</string>
++    <string name="menu_item_mirrly_tg_proxy">Mirrly TG 代理</string>
++    <string name="mirrly_worker_domain">Cloudflare Worker 域名</string>
++    <string name="menu_item_import_config_slipnet_paste">粘贴 SlipNet 配置</string>
++    <string name="paste_hint_wireguard">[Interface]\nPrivateKey = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = ...</string>
++    <string name="paste_hint_slipnet">slipnet://&lt;base64 编码的隧道设置&gt;</string>
++    <string name="slipnet_title_tunnel_type">隧道类型</string>
++    <string name="slipnet_title_resolvers">解析服务器</string>
++    <string name="slipnet_title_public_key">服务器公钥</string>
++    <string name="slipnet_title_config">配置</string>
++    <string name="mirrly_port">本地端口</string>
++    <string name="mirrly_status_running">代理运行于 127.0.0.1:%1$d</string>
++    <string name="mirrly_status_failed">代理启动失败（代码 %1$d）</string>
++    <string name="server_lab_amnezia_jc">Jc - junk packet count</string>
++    <string name="server_lab_amnezia_jmin">Jmin - min junk packet size</string>
++    <string name="server_lab_amnezia_jmax">Jmax - max junk packet size</string>
++    <string name="server_lab_amnezia_s1">S1 - init junk size</string>
++    <string name="server_lab_amnezia_s2">S2 - response junk size</string>
++    <string name="server_lab_amnezia_h1">H1 - init magic header</string>
++    <string name="server_lab_amnezia_h2">H2 - response magic header</string>
++    <string name="server_lab_amnezia_h5">H5 - underload magic header</string>
++    <string name="string_search">搜索</string>
++    <string name="acc_menu">菜单</string>
++    <string name="acc_close">关闭</string>
++    <string name="acc_more_options">更多选项</string>
+ </resources>
+diff --git a/V2rayNG/app/src/main/res/values-zh-rTW/strings.xml b/V2rayNG/app/src/main/res/values-zh-rTW/strings.xml
+index 28d861f3..21e25bc2 100644
+--- a/V2rayNG/app/src/main/res/values-zh-rTW/strings.xml
++++ b/V2rayNG/app/src/main/res/values-zh-rTW/strings.xml
+@@ -41,6 +41,7 @@
+     <string name="menu_item_import_config_manually_http">新增 [HTTP]</string>
+     <string name="menu_item_import_config_manually_trojan">新增 [Trojan]</string>
+     <string name="menu_item_import_config_manually_wireguard">新增 [WireGuard]</string>
++    <string name="menu_item_import_config_manually_amnezia">新增 [AmneziaWG]</string>
+     <string name="menu_item_import_config_manually_hysteria2">新增 [Hysteria2]</string>
+     <string name="confirm_delete_visible_profiles">確定要刪除目前顯示的所有設定檔嗎？</string>
+     <string name="confirm_delete_duplicate_profiles">確定要刪除目前顯示的所有重複設定檔嗎？</string>
+@@ -111,6 +112,9 @@
+     <string name="toast_require_file_manager">請安裝檔案總管。</string>
+     <string name="server_customize_config">自訂設定</string>
+     <string name="toast_config_file_invalid">無效設定</string>
++    <string name="toast_psiphon_unsupported">目前核心不支援 Psiphon 協定</string>
++    <string name="toast_slipnet_unsupported">SlipNet 隧道不受內建冈核支援</string>
++    <string name="toast_amnezia_unsupported">目前核心不支援 AmneziaWG 混淆；清除 S1/S2/H1/H2/H5 值可依一般 WireGuard 連線</string>
+     <string name="server_lab_content">內容</string>
+     <string name="toast_none_data_clipboard">剪貼簿內無資料</string>
+     <string name="toast_invalid_url">URL 無效</string>
+@@ -551,4 +555,59 @@
+     <string name="connection_test_empty_message">沒有詳細資訊</string>
+     <string name="value_unknown">未知</string>
+ 
++
++
++    <!-- DNS Changer -->
++    <string name="title_dns_changer">DNS 更換器</string>
++    <string name="dns_title_name">名稱</string>
++    <string name="dns_title_ipv4_primary">IPv4 主 DNS</string>
++    <string name="dns_title_ipv4_secondary">IPv4 備用 DNS</string>
++    <string name="dns_title_ipv6_primary">IPv6 主 DNS</string>
++    <string name="dns_title_ipv6_secondary">IPv6 備用 DNS</string>
++    <string name="dns_title_select_profile">選擇 DNS 設定</string>
++    <string name="dns_title_no_profiles">沒有 DNS 設定，請在上方建立。</string>
++    <string name="dns_title_profile_activated">DNS 設定已啟用</string>
++    <string name="dns_title_profile_deactivated">DNS 設定已停用</string>
++    <string name="dns_title_save_profile">儲存設定</string>
++    <string name="dns_title_activate">啟用</string>
++    <string name="dns_title_deactivate">停用</string>
++
++    <!-- DNS Ping Checker -->
++    <string name="title_dns_ping_checker">DNS Ping 檢測器</string>
++    <string name="dns_title_server">DNS 伺服器</string>
++    <string name="dns_hint_multi_server">用逗號分隔多個伺服器</string>
++    <string name="dns_title_domain">網域</string>
++    <string name="dns_title_ping">Ping</string>
++    <string name="dns_title_latency">延遲: %1$s ms</string>
++    <string name="dns_title_timeout">逾時</string>
++    <string name="dns_title_no_result">無結果</string>
++
++    <!-- Psiphon -->
++    <string name="dns_title_psiphon_region">地區</string>
++    <string name="title_pref_mirrly_enabled">Mirrly TG Proxy</string>
++    <string name="summary_pref_mirrly_enabled">Enable the Mirrly Telegram proxy settings</string>
++    <string name="menu_item_mirrly_tg_proxy">Mirrly TG 代理</string>
++    <string name="mirrly_worker_domain">Cloudflare Worker 網域</string>
++    <string name="menu_item_import_config_slipnet_paste">貼上 SlipNet 配置</string>
++    <string name="paste_hint_wireguard">[Interface]\nPrivateKey = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = ...</string>
++    <string name="paste_hint_slipnet">slipnet://&lt;base64 編碼的隧道設定&gt;</string>
++    <string name="slipnet_title_tunnel_type">隧道類型</string>
++    <string name="slipnet_title_resolvers">解析伺服器</string>
++    <string name="slipnet_title_public_key">伺服器公鑰</string>
++    <string name="slipnet_title_config">配置</string>
++    <string name="mirrly_port">本機連接埠</string>
++    <string name="mirrly_status_running">代理正在 127.0.0.1:%1$d 上執行</string>
++    <string name="mirrly_status_failed">代理啟動失敗（代碼 %1$d）</string>
++    <string name="server_lab_amnezia_jc">Jc - junk packet count</string>
++    <string name="server_lab_amnezia_jmin">Jmin - min junk packet size</string>
++    <string name="server_lab_amnezia_jmax">Jmax - max junk packet size</string>
++    <string name="server_lab_amnezia_s1">S1 - init junk size</string>
++    <string name="server_lab_amnezia_s2">S2 - response junk size</string>
++    <string name="server_lab_amnezia_h1">H1 - init magic header</string>
++    <string name="server_lab_amnezia_h2">H2 - response magic header</string>
++    <string name="server_lab_amnezia_h5">H5 - underload magic header</string>
++    <string name="string_search">搜尋</string>
++    <string name="acc_menu">功能表</string>
++    <string name="acc_close">關閉</string>
++    <string name="acc_more_options">更多選項</string>
+ </resources>
+diff --git a/V2rayNG/app/src/main/res/values/strings.xml b/V2rayNG/app/src/main/res/values/strings.xml
+index 31d4916b..dd7953c5 100644
+--- a/V2rayNG/app/src/main/res/values/strings.xml
++++ b/V2rayNG/app/src/main/res/values/strings.xml
+@@ -34,6 +34,13 @@
+     <string name="menu_item_import_config_local">Import from a local file</string>
+     <string name="menu_item_import_config_wireguard_paste">Paste WireGuard config</string>
+     <string name="menu_item_import_config_amnezia_paste">Paste AmneziaWG config</string>
++    <string name="menu_item_import_config_slipnet_paste">Paste SlipNet config</string>
++    <string name="paste_hint_wireguard">[Interface]\nPrivateKey = ...\n\n[Peer]\nPublicKey = ...\nEndpoint = ...</string>
++    <string name="paste_hint_slipnet">slipnet://&lt;base64-encoded tunnel settings&gt;</string>
++    <string name="slipnet_title_tunnel_type">Tunnel type</string>
++    <string name="slipnet_title_resolvers">Resolvers</string>
++    <string name="slipnet_title_public_key">Server public key</string>
++    <string name="slipnet_title_config">Config</string>
+     <string name="menu_item_mirrly_tg_proxy">Mirrly TG Proxy</string>
+     <string name="mirrly_worker_domain">Cloudflare Worker domain</string>
+     <string name="mirrly_port">Local port</string>
+@@ -52,6 +59,7 @@
+     <string name="menu_item_import_config_manually_http">Add [HTTP]</string>
+     <string name="menu_item_import_config_manually_trojan">Add [Trojan]</string>
+     <string name="menu_item_import_config_manually_wireguard">Add [WireGuard]</string>
++    <string name="menu_item_import_config_manually_amnezia">Add [AmneziaWG]</string>
+     <string name="menu_item_import_config_manually_hysteria2">Add [Hysteria2]</string>
+     <string name="confirm_delete_visible_profiles">Are you sure you want to delete all profiles currently shown?</string>
+     <string name="confirm_delete_duplicate_profiles">Are you sure you want to delete all duplicate profiles currently shown?</string>
+@@ -111,6 +119,14 @@
+     <string name="server_lab_reserved">Reserved (optional, separated by commas)</string>
+     <string name="server_lab_local_address">Local address (optional IPv4/IPv6, separated by commas)</string>
+     <string name="server_lab_local_mtu">MTU (optional, default 1420)</string>
++    <string name="server_lab_amnezia_jc">Jc - junk packet count (optional, 0 disables obfuscation)</string>
++    <string name="server_lab_amnezia_jmin">Jmin - min junk packet size (optional)</string>
++    <string name="server_lab_amnezia_jmax">Jmax - max junk packet size (optional)</string>
++    <string name="server_lab_amnezia_s1">S1 - init packet junk size (optional)</string>
++    <string name="server_lab_amnezia_s2">S2 - response packet junk size (optional)</string>
++    <string name="server_lab_amnezia_h1">H1 - init packet magic header (optional)</string>
++    <string name="server_lab_amnezia_h2">H2 - response packet magic header (optional)</string>
++    <string name="server_lab_amnezia_h5">H5 - underload packet magic header (optional)</string>
+     <string name="server_lab_kcp_mtu">mKCP MTU (optional, default 1350)</string>
+     <string name="server_lab_kcp_tti">mKCP TTI (optional, default 50 ms)</string>
+     <string name="toast_success">Success</string>
+@@ -122,6 +138,9 @@
+     <string name="toast_require_file_manager">Please install a file manager.</string>
+     <string name="server_customize_config">Customize config</string>
+     <string name="toast_config_file_invalid">Invalid config</string>
++    <string name="toast_psiphon_unsupported">Psiphon protocol is not supported by the bundled core</string>
++    <string name="toast_slipnet_unsupported">SlipNet tunnels are not supported by the bundled core</string>
++    <string name="toast_amnezia_unsupported">AmneziaWG obfuscation is not supported by the bundled core; clear S1/S2/H1/H2/H5 to connect as plain WireGuard</string>
+     <string name="server_lab_content">Content</string>
+     <string name="toast_none_data_clipboard">There is no data in the clipboard</string>
+     <string name="toast_invalid_url">Invalid URL</string>
+@@ -562,4 +581,40 @@
+     <string name="connection_test_empty_message">no details available</string>
+     <string name="value_unknown">unknown</string>
+ 
++    <!-- DNS Changer -->
++    <string name="title_dns_changer">DNS Changer</string>
++    <string name="dns_title_name">Name</string>
++    <string name="dns_title_ipv4_primary">IPv4 Primary</string>
++    <string name="dns_title_ipv4_secondary">IPv4 Secondary</string>
++    <string name="dns_title_ipv6_primary">IPv6 Primary</string>
++    <string name="dns_title_ipv6_secondary">IPv6 Secondary</string>
++    <string name="dns_title_select_profile">Select DNS profile</string>
++    <string name="dns_title_no_profiles">No DNS profiles. Create one above.</string>
++    <string name="dns_title_profile_activated">DNS profile activated</string>
++    <string name="dns_title_profile_deactivated">DNS profile deactivated</string>
++    <string name="dns_title_save_profile">Save profile</string>
++    <string name="dns_title_activate">Activate</string>
++    <string name="dns_title_deactivate">Deactivate</string>
++
++    <!-- DNS Ping Checker -->
++    <string name="title_dns_ping_checker">DNS Ping Checker</string>
++    <string name="dns_title_server">DNS Server</string>
++    <string name="dns_hint_multi_server">Separate multiple servers with commas</string>
++    <string name="dns_title_domain">Domain</string>
++    <string name="dns_title_ping">Ping</string>
++    <string name="dns_title_latency">Latency: %1$s ms</string>
++    <string name="dns_title_timeout">Timeout</string>
++    <string name="dns_title_no_result">No result</string>
++
++    <!-- Psiphon -->
++    <string name="dns_title_psiphon_region">Region</string>
++
++    <!-- Mirrly settings -->
++    <string name="title_pref_mirrly_enabled">Mirrly TG Proxy</string>
++    <string name="summary_pref_mirrly_enabled">Enable the Mirrly Telegram proxy settings</string>
++
++    <string name="string_search">Search</string>
++    <string name="acc_menu">Menu</string>
++    <string name="acc_close">Close</string>
++    <string name="acc_more_options">More options</string>
+ </resources>
+diff --git a/V2rayNG/app/src/test/java/com/v2ray/ang/handler/SubscriptionIndexTest.kt b/V2rayNG/app/src/test/java/com/v2ray/ang/handler/SubscriptionIndexTest.kt
+index 79532d4b..9885df30 100644
+--- a/V2rayNG/app/src/test/java/com/v2ray/ang/handler/SubscriptionIndexTest.kt
++++ b/V2rayNG/app/src/test/java/com/v2ray/ang/handler/SubscriptionIndexTest.kt
+@@ -3,6 +3,7 @@ package com.v2ray.ang.handler
+ import android.util.Log
+ import com.tencent.mmkv.MMKV
+ import com.v2ray.ang.dto.entities.SubscriptionItem
++import com.v2ray.ang.testutil.MmkvTestRuntime
+ import com.v2ray.ang.util.JsonUtil
+ import org.junit.Assert.assertEquals
+ import org.junit.Before
+@@ -10,7 +11,6 @@ import org.junit.BeforeClass
+ import org.junit.Test
+ import org.mockito.Mockito.mockStatic
+ import org.mockito.kotlin.any
+-import org.mockito.kotlin.mock
+ import org.mockito.kotlin.never
+ import org.mockito.kotlin.reset
+ import org.mockito.kotlin.verify
+@@ -95,20 +95,13 @@ class SubscriptionIndexTest {
+     }
+ 
+     companion object {
+-        private val main: MMKV = mock()
+-        private val subs: MMKV = mock()
+-        private val settings: MMKV = mock()
++        private val main: MMKV = MmkvTestRuntime.handle("MAIN")
++        private val subs: MMKV = MmkvTestRuntime.handle("SUB")
+ 
+         @BeforeClass
+         @JvmStatic
+         fun initializeHandles() {
+-            mockStatic(MMKV::class.java).use {
+-                it.`when`<MMKV> { MMKV.mmkvWithID("MAIN", MMKV.MULTI_PROCESS_MODE) }.thenReturn(main)
+-                it.`when`<MMKV> { MMKV.mmkvWithID("SUB", MMKV.MULTI_PROCESS_MODE) }.thenReturn(subs)
+-                it.`when`<MMKV> { MMKV.mmkvWithID("SETTING", MMKV.MULTI_PROCESS_MODE) }.thenReturn(settings)
+-                MmkvManager.decodeSubscriptions()
+-                MmkvManager.decodeSettingsString("test-initialize")
+-            }
++            MmkvTestRuntime.bindAll()
+         }
+     }
+ }
+diff --git a/V2rayNG/gradle.properties b/V2rayNG/gradle.properties
+index ae486e52..24aa41b5 100644
+--- a/V2rayNG/gradle.properties
++++ b/V2rayNG/gradle.properties
+@@ -31,4 +31,10 @@ android.dependency.useConstraints=true
+ android.r8.strictFullModeForKeepRules=false
+ android.r8.optimizedResourceShrinking=false
+ android.builtInKotlin=false
+-android.newDsl=false
+\ No newline at end of file
++android.newDsl=false
++systemProp.org.gradle.internal.http.socketTimeout=180000
++org.gradle.parallel=false
++org.gradle.daemon=false
++
++systemProp.org.gradle.internal.http.connectionTimeout=180000
++android.aapt2FromMavenOverride=/data/data/com.termux/files/usr/tmp/opencode/wrap/aapt2
+diff --git a/V2rayNG/settings.gradle.kts b/V2rayNG/settings.gradle.kts
+index 7ac30b30..9f03bb43 100644
+--- a/V2rayNG/settings.gradle.kts
++++ b/V2rayNG/settings.gradle.kts
+@@ -1,6 +1,7 @@
+ pluginManagement {
+     repositories {
+-        google {
++        maven {
++            url = uri("https://redirector.gvt1.com/edgedl/dl/android/maven2")
+             content {
+                 includeGroupByRegex("com\\.android.*")
+                 includeGroupByRegex("com\\.google.*")
+@@ -14,7 +15,7 @@ pluginManagement {
+ dependencyResolutionManagement {
+     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+     repositories {
+-        google()
++        maven { url = uri("https://redirector.gvt1.com/edgedl/dl/android/maven2") }
+         mavenCentral()
+         maven { url = uri("https://jitpack.io") }
+     }

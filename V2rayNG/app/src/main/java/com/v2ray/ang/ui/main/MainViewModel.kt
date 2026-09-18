@@ -106,8 +106,15 @@ class MainViewModel(
                 updateRunningState(true)
             }
 
-            MainServiceEvent.StateStartFailure -> {
-                toastError(R.string.toast_services_failure)
+            is MainServiceEvent.StateStartFailure -> {
+                val detail = event.errorMessage
+                if (detail.isNotBlank()) {
+                    toastError(getApplication<Application>().getString(R.string.toast_services_failure) +
+                        "\n$detail")
+                } else {
+                    toastError(R.string.toast_services_failure)
+                }
+                com.v2ray.ang.engine.ConnectionManager.onStartFailure(detail)
                 updateRunningState(false)
             }
 

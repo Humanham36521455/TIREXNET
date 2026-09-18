@@ -3,6 +3,7 @@ package com.v2ray.ang.handler
 import android.util.Log
 import com.tencent.mmkv.MMKV
 import com.v2ray.ang.dto.entities.SubscriptionItem
+import com.v2ray.ang.testutil.MmkvTestRuntime
 import com.v2ray.ang.util.JsonUtil
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -10,7 +11,6 @@ import org.junit.BeforeClass
 import org.junit.Test
 import org.mockito.Mockito.mockStatic
 import org.mockito.kotlin.any
-import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.verify
@@ -95,20 +95,13 @@ class SubscriptionIndexTest {
     }
 
     companion object {
-        private val main: MMKV = mock()
-        private val subs: MMKV = mock()
-        private val settings: MMKV = mock()
+        private val main: MMKV = MmkvTestRuntime.handle("MAIN")
+        private val subs: MMKV = MmkvTestRuntime.handle("SUB")
 
         @BeforeClass
         @JvmStatic
         fun initializeHandles() {
-            mockStatic(MMKV::class.java).use {
-                it.`when`<MMKV> { MMKV.mmkvWithID("MAIN", MMKV.MULTI_PROCESS_MODE) }.thenReturn(main)
-                it.`when`<MMKV> { MMKV.mmkvWithID("SUB", MMKV.MULTI_PROCESS_MODE) }.thenReturn(subs)
-                it.`when`<MMKV> { MMKV.mmkvWithID("SETTING", MMKV.MULTI_PROCESS_MODE) }.thenReturn(settings)
-                MmkvManager.decodeSubscriptions()
-                MmkvManager.decodeSettingsString("test-initialize")
-            }
+            MmkvTestRuntime.bindAll()
         }
     }
 }

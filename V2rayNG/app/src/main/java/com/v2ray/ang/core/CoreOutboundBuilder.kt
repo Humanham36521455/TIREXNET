@@ -30,6 +30,7 @@ object CoreOutboundBuilder {
             EConfigType.VLESS -> toOutboundVless(profileItem)
             EConfigType.TROJAN -> toOutboundTrojan(profileItem)
             EConfigType.WIREGUARD -> toOutboundWireguard(profileItem)
+            EConfigType.AMNEZIA_WG -> toOutboundAmnezia(profileItem)
             EConfigType.HYSTERIA2 -> toOutboundHysteria2(profileItem)
             EConfigType.HTTP -> toOutboundHttp(profileItem)
             else -> null
@@ -51,6 +52,7 @@ object CoreOutboundBuilder {
                 || protocol.equals(EConfigType.HTTP.name, true)
                 || protocol.equals(EConfigType.TROJAN.name, true)
                 || protocol.equals(EConfigType.WIREGUARD.name, true)
+                || protocol.equals(EConfigType.AMNEZIA_WG.name, true)
                 || protocol.equals(EConfigType.HYSTERIA2.name, true)
                 || protocol.equals(EConfigType.HYSTERIA.name, true)
             ) {
@@ -93,8 +95,9 @@ object CoreOutboundBuilder {
                 streamSettings = OutboundBean.StreamSettingsBean()
             )
 
-            EConfigType.WIREGUARD -> OutboundBean(
-                protocol = configType.name.lowercase(),
+            EConfigType.WIREGUARD,
+            EConfigType.AMNEZIA_WG -> OutboundBean(
+                protocol = EConfigType.WIREGUARD.name.lowercase(),
                 settings = OutboundBean.OutSettingsBean(
                     secretKey = "",
                     peers = listOf(OutboundBean.OutSettingsBean.WireGuardBean())
@@ -143,7 +146,10 @@ object CoreOutboundBuilder {
             settings.address = getServerAddress(profileItem)
             settings.port = profileItem.serverPort.orEmpty().toInt()
             settings.id = profileItem.password.orEmpty()
-            settings.encryption = profileItem.method
+            // The Xray VLESS outbound loader rejects an empty encryption value
+            // ("please add/set encryption:none for every user") and the app only
+            // ever uses plain VLESS encryption, so map missing/blank to "none".
+            settings.encryption = profileItem.method?.takeIf { it.isNotBlank() } ?: "none"
             settings.flow = profileItem.flow
             settings.level = AppConfig.DEFAULT_LEVEL
         }
@@ -188,7 +194,10 @@ object CoreOutboundBuilder {
             settings.address = getServerAddress(profileItem)
             settings.port = profileItem.serverPort.orEmpty().toInt()
             settings.password = profileItem.password
-            settings.flow = profileItem.flow
+            // The bundled Xray-core rejects any non-empty Trojan flow (removed
+            // feature), so never emit it in the runtime outbound. ProfileItem.flow
+            // is still kept for URI export round-trips.
+            settings.flow = null
             settings.level = AppConfig.DEFAULT_LEVEL
         }
 
@@ -237,6 +246,53 @@ object CoreOutboundBuilder {
 
     private fun toOutboundWireguard(profileItem: ProfileItem): OutboundBean? {
         val outboundBean = createInitOutbound(EConfigType.WIREGUARD)
+
+        val rawAddresses = profileItem.localAddress
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?.ifEmpty { null }
+            ?: listOf(AppConfig.WIREGUARD_LOCAL_ADDRESS_V4)
+
+        val addresses = if (MmkvManager.decodeSettingsBool(AppConfig.PREF_IPV6_ENABLED) == true) {
+            rawAddresses
+        } else {
+            val ipv4Addresses = rawAddresses.filter { !it.contains(":") }
+            ipv4Addresses.ifEmpty { listOf(AppConfig.WIREGUARD_LOCAL_ADDRESS_V4) }
+        }
+
+        outboundBean?.settings?.let { wireguard ->
+            wireguard.secretKey = profileItem.secretKey
+            wireguard.address = addresses
+            wireguard.peers?.firstOrNull()?.let { peer ->
+                peer.publicKey = profileItem.publicKey.orEmpty()
+                peer.preSharedKey = profileItem.preSharedKey?.nullIfBlank()
+                peer.endpoint = Utils.getIpv6Address(profileItem.server) + ":${profileItem.serverPort}"
+            }
+            wireguard.mtu = profileItem.mtu
+            wireguard.reserved = profileItem.reserved?.takeIf { it.isNotBlank() }?.split(",")?.filter { it.isNotBlank() }?.map { it.trim().toInt() }
+        }
+
+        if (!profileItem.finalMask.isNullOrBlank()) {
+            outboundBean?.streamSettings = OutboundBean.StreamSettingsBean()
+            outboundBean?.streamSettings?.let {
+                updateOutboundFinalMask(it, profileItem)
+                it.network = null
+            }
+        }
+        return outboundBean
+    }
+
+    /**
+     * Builds the outbound for an AmneziaWG profile.
+     *
+     * Xray-core implements the standard WireGuard protocol. When the server uses
+     * AmneziaWG packet-junk obfuscation (Jc > 0), the handshake will fail, and
+     * the connection reports the real core error. Configs with obfuscation
+     * disabled (Jc <= 0) connect like plain WireGuard.
+     */
+    private fun toOutboundAmnezia(profileItem: ProfileItem): OutboundBean? {
+        val outboundBean = createInitOutbound(EConfigType.AMNEZIA_WG)
 
         val rawAddresses = profileItem.localAddress
             ?.split(",")
@@ -429,12 +485,20 @@ object CoreOutboundBuilder {
             }
 
             NetworkType.H2.type, NetworkType.HTTP.type -> {
-                streamSettings.network = NetworkType.H2.type
-                val h2Setting = OutboundBean.StreamSettingsBean.HttpSettingsBean()
-                h2Setting.host = host.orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                sni = h2Setting.host.getOrNull(0)
-                h2Setting.path = path ?: "/"
-                streamSettings.httpSettings = h2Setting
+                // The bundled Xray-core removed the legacy h2/http transport
+                // (errors with PrintRemovedFeatureError in infra/conf), so any
+                // emitted "h2" network makes the core reject the config. Migrate
+                // such profiles to XHTTP, seeding its host/path from the h2
+                // settings so imports keep working instead of failing to start.
+                streamSettings.network = NetworkType.XHTTP.type
+                val xhttpSetting = OutboundBean.StreamSettingsBean.XhttpSettingsBean()
+                xhttpSetting.host = host.orEmpty().split(",").map { it.trim() }
+                    .filter { it.isNotEmpty() }.joinToString(",")
+                sni = host?.split(",")?.get(0)?.trim()?.nullIfBlank()
+                xhttpSetting.path = path ?: "/"
+                xhttpSetting.mode = null
+                xhttpSetting.extra = JsonUtil.parseString(xhttpExtra)
+                streamSettings.xhttpSettings = xhttpSetting
             }
 
 //                    "quic" -> {

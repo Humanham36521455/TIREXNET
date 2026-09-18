@@ -54,7 +54,11 @@ class MainRepository(
                 AppConfig.MSG_STATE_RUNNING -> MainServiceEvent.StateRunning
                 AppConfig.MSG_STATE_NOT_RUNNING -> MainServiceEvent.StateNotRunning
                 AppConfig.MSG_STATE_START_SUCCESS -> MainServiceEvent.StateStartSuccess
-                AppConfig.MSG_STATE_START_FAILURE -> MainServiceEvent.StateStartFailure
+                AppConfig.MSG_STATE_START_FAILURE -> MainServiceEvent.StateStartFailure(
+                    safeIntent.getStringExtra("content")
+                        ?.takeIf { it.isNotBlank() }
+                        ?: ""
+                )
 
                 AppConfig.MSG_STATE_STOP_SUCCESS -> MainServiceEvent.StateStopSuccess
                 AppConfig.MSG_MEASURE_DELAY_RESULT -> safeIntent
@@ -72,7 +76,10 @@ class MainRepository(
 
                 else -> null
             }
-            event?.let { _mainServiceEvent.tryEmit(it) }
+            event?.let {
+                com.v2ray.ang.engine.ConnectionManager.onServiceCommand(safeIntent.getIntExtra("key", 0))
+                _mainServiceEvent.tryEmit(it)
+            }
         }
     }
 

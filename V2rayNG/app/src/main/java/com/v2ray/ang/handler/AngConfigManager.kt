@@ -12,9 +12,14 @@ import com.v2ray.ang.dto.entities.SubscriptionCache
 import com.v2ray.ang.dto.entities.SubscriptionItem
 import com.v2ray.ang.enums.EConfigType
 import com.v2ray.ang.extension.isNotNullEmpty
+import com.v2ray.ang.fmt.AmneziaFmt
 import com.v2ray.ang.fmt.CustomFmt
+import com.v2ray.ang.fmt.DnsFmt
 import com.v2ray.ang.fmt.Hysteria2Fmt
+import com.v2ray.ang.fmt.PsiphonFmt
 import com.v2ray.ang.fmt.ShadowsocksFmt
+import com.v2ray.ang.fmt.SingBoxFmt
+import com.v2ray.ang.fmt.SlipNetFmt
 import com.v2ray.ang.fmt.SocksFmt
 import com.v2ray.ang.fmt.TrojanFmt
 import com.v2ray.ang.fmt.V2rayNFmt
@@ -46,8 +51,13 @@ object AngConfigManager {
             EConfigType.TROJAN.protocolScheme to TrojanFmt::parse,
             EConfigType.VLESS.protocolScheme to VlessFmt::parse,
             EConfigType.WIREGUARD.protocolScheme to WireguardFmt::parse,
+            EConfigType.AMNEZIA_WG.protocolScheme to AmneziaFmt::parse,
+            AppConfig.V2RAYS_AMNEZIA_VPN to AmneziaFmt::parse,
             EConfigType.HYSTERIA2.protocolScheme to Hysteria2Fmt::parse,
             AppConfig.HY2 to Hysteria2Fmt::parse,
+            AppConfig.PSIPHON to PsiphonFmt::parse,
+            AppConfig.SLIPNET to SlipNetFmt::parse,
+            AppConfig.DNS to DnsFmt::parse,
         )
     }
 
@@ -162,7 +172,11 @@ object AngConfigManager {
                 EConfigType.VLESS -> VlessFmt.toUri(config)
                 EConfigType.TROJAN -> TrojanFmt.toUri(config)
                 EConfigType.WIREGUARD -> WireguardFmt.toUri(config)
+                EConfigType.AMNEZIA_WG -> AmneziaFmt.toUri(config)
                 EConfigType.HYSTERIA2 -> Hysteria2Fmt.toUri(config)
+                EConfigType.PSIPHON -> PsiphonFmt.toUri(config)
+                EConfigType.SLIPNET -> SlipNetFmt.toUri(config)
+                EConfigType.DNS -> DnsFmt.toUri(config)
                 else -> {}
             }
         } catch (e: Exception) {
@@ -325,6 +339,28 @@ object AngConfigManager {
         if (server == null) {
             return 0
         }
+        if (SingBoxFmt.isSingBoxConfig(server)) {
+            try {
+                val configs = SingBoxFmt.parse(server)
+                if (configs.isNotEmpty()) {
+                    configs.forEach {
+                        it.subscriptionId = subid
+                        it.description = generateDescription(it)
+                    }
+                    commitProfiles(
+                        configs = configs.map(::ParsedProfile),
+                        subid = subid,
+                        append = append,
+                    )
+                    return configs.size
+                }
+            } catch (e: ProfileStorageException) {
+                throw e
+            } catch (e: Exception) {
+                LogUtil.e(AppConfig.TAG, "Failed to parse sing-box config", e)
+            }
+            return 0
+        }
         if (server.contains("inbounds")
             && server.contains("outbounds")
             && server.contains("routing")
@@ -369,9 +405,35 @@ object AngConfigManager {
                 LogUtil.e(AppConfig.TAG, "Failed to parse custom config server as single config", e)
             }
             return 0
+        } else if (PsiphonFmt.isPsiphonServerList(server)) {
+            try {
+                val configs = PsiphonFmt.parseSubscription(server)
+                if (configs.isNotEmpty()) {
+                    configs.forEach {
+                        it.subscriptionId = subid
+                        it.description = generateDescription(it)
+                    }
+                    commitProfiles(
+                        configs = configs.map(::ParsedProfile),
+                        subid = subid,
+                        append = append,
+                    )
+                    return configs.size
+                }
+            } catch (e: ProfileStorageException) {
+                throw e
+            } catch (e: Exception) {
+                LogUtil.e(AppConfig.TAG, "Failed to parse Psiphon server list", e)
+            }
+            return 0
         } else if (server.startsWith("[Interface]") && server.contains("[Peer]")) {
             try {
-                val config = WireguardFmt.parseWireguardConfFile(server)
+                val config = if (server.containsAmneziaMarkers()) {
+                    AmneziaFmt.parseConfigText(server)
+                } else {
+                    WireguardFmt.parseWireguardConfFile(server)
+                }
+                if (config == null) return 0
                 config.subscriptionId = subid
                 config.description = generateDescription(config)
                 commitProfiles(
@@ -624,6 +686,17 @@ object AngConfigManager {
      */
     fun generateDescription(profile: ProfileItem): String {
         // Hide xxx:xxx:***/xxx.xxx.xxx.***
+        if (profile.configType == EConfigType.DNS) {
+            val servers = (profile.dnsServers ?: "").split(',')
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+            return when (servers.size) {
+                0 -> ""
+                1 -> servers[0]
+                else -> "${servers[0]}, +${servers.size - 1}"
+            }
+        }
+
         val server = profile.server
         val port = profile.serverPort
         if (server.isNullOrBlank() && port.isNullOrBlank()) return ""
@@ -636,5 +709,21 @@ object AngConfigManager {
         } ?: ""
 
         return "$addrPart : ${port ?: ""}"
+    }
+
+    /**
+     * Detects whether a pasted config text carries AmneziaWG-specific markers
+     * (junk/obfuscation keys), which makes it an AmneziaWG config rather than a
+     * plain WireGuard one.
+     *
+     * @param configText The config text.
+     * @return True if AmneziaWG markers are present.
+     */
+    private fun String.containsAmneziaMarkers(): Boolean {
+        val lower = lowercase()
+        return Regex(
+            """^(Jc|Jmin|Jmax|S1|S2|H1|H2|H3|H4|H5)\s*=""",
+            RegexOption.MULTILINE
+        ).containsMatchIn(lower)
     }
 }

@@ -90,6 +90,18 @@ object AppConfig {
     const val PREF_AUTO_SORT_AFTER_TEST = "pref_auto_sort_after_test"
     const val PREF_REAL_PING_CONCURRENCY = "pref_real_ping_concurrency"
 
+    /** DNS Changer (custom DNS profiles applied to the VPN interface). */
+    const val PREF_DNS_CHANGER_CONFIGS = "pref_dns_changer_configs"
+    const val PREF_DNS_CHANGER_ACTIVE_ID = "pref_dns_changer_active_id"
+    const val PREF_DNS_CHANGER_ACTIVE_SERVERS = "pref_dns_changer_active_servers"
+
+    /** Mirrly TG proxy settings. */
+    const val PREF_MIRRLY_ENABLED = "pref_mirrly_enabled"
+    const val PREF_MIRRLY_DOMAIN = "pref_mirrly_domain"
+    const val PREF_MIRRLY_PORT = "pref_mirrly_port"
+    const val MIRRLY_DEFAULT_DOMAIN = "mirrly-tg-proxy-worker.brawny-singer.workers.dev"
+    const val MIRRLY_DEFAULT_PORT = 1443
+
     /** Cache keys. */
     const val CACHE_SUBSCRIPTION_ID = "cache_subscription_id"
 
@@ -213,6 +225,11 @@ object AppConfig {
     const val VLESS = "vless://"
     const val TROJAN = "trojan://"
     const val WIREGUARD = "wireguard://"
+    const val AMNEZIA = "amnezia://"
+    const val V2RAYS_AMNEZIA_VPN = "vpn://"
+    const val PSIPHON = "psiphon://"
+    const val SLIPNET = "slipnet://"
+    const val DNS = "dns://"
     const val TUIC = "tuic://"
     const val HYSTERIA = "hysteria://"
     const val HYSTERIA2 = "hysteria2://"

@@ -107,6 +107,22 @@ object Utils {
     }
 
     /**
+     * Public base64 decoder tolerant of missing padding and URL-safe alphabets.
+     *
+     * @param text The base64 encoded string.
+     * @return The decoded string, or null if decoding fails.
+     */
+    fun safeDecodeBase64(text: String?): String? {
+        if (text.isNullOrEmpty()) return null
+        val padding = when (text.length % 4) {
+            0 -> 0
+            else -> 4 - (text.length % 4)
+        }
+        val padded = text + "=".repeat(padding)
+        return tryDecodeBase64(padded) ?: tryDecodeBase64(text)
+    }
+
+    /**
      * Encode a string to base64.
      *
      * @param text The string to encode.

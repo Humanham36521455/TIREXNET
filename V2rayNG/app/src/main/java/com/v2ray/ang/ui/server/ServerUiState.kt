@@ -30,6 +30,14 @@ class ServerUiState(
     reserved: String = "0,0,0",
     localAddress: String = WIREGUARD_LOCAL_ADDRESS_V4,
     mtu: String = WIREGUARD_LOCAL_MTU,
+    awgJunkPacketCount: String = "",
+    awgJunkPacketMinSize: String = "",
+    awgJunkPacketMaxSize: String = "",
+    awgInitPacketJunkSize: String = "",
+    awgResponsePacketJunkSize: String = "",
+    awgInitPacketMagicHeader: String = "",
+    awgResponsePacketMagicHeader: String = "",
+    awgUnderloadPacketMagicHeader: String = "",
     obfsPassword: String = "",
     portHopping: String = "",
     portHoppingInterval: String = "",
@@ -61,6 +69,7 @@ class ServerUiState(
     echConfigList: String = "",
     verifyPeerCertByName: String = "",
     pinnedCA256: String = "",
+    dnsServers: String = "",
     isFetchingCert: Boolean = false
 ) {
     var configType by mutableStateOf(configType)
@@ -78,6 +87,14 @@ class ServerUiState(
     var reserved by mutableStateOf(reserved)
     var localAddress by mutableStateOf(localAddress)
     var mtu by mutableStateOf(mtu)
+    var awgJunkPacketCount by mutableStateOf(awgJunkPacketCount)
+    var awgJunkPacketMinSize by mutableStateOf(awgJunkPacketMinSize)
+    var awgJunkPacketMaxSize by mutableStateOf(awgJunkPacketMaxSize)
+    var awgInitPacketJunkSize by mutableStateOf(awgInitPacketJunkSize)
+    var awgResponsePacketJunkSize by mutableStateOf(awgResponsePacketJunkSize)
+    var awgInitPacketMagicHeader by mutableStateOf(awgInitPacketMagicHeader)
+    var awgResponsePacketMagicHeader by mutableStateOf(awgResponsePacketMagicHeader)
+    var awgUnderloadPacketMagicHeader by mutableStateOf(awgUnderloadPacketMagicHeader)
     var obfsPassword by mutableStateOf(obfsPassword)
     var portHopping by mutableStateOf(portHopping)
     var portHoppingInterval by mutableStateOf(portHoppingInterval)
@@ -109,6 +126,7 @@ class ServerUiState(
     var echConfigList by mutableStateOf(echConfigList)
     var verifyPeerCertByName by mutableStateOf(verifyPeerCertByName)
     var pinnedCA256 by mutableStateOf(pinnedCA256)
+    var dnsServers by mutableStateOf(dnsServers)
     var isFetchingCert by mutableStateOf(isFetchingCert)
 
     fun toProfileItem(initialConfig: ProfileItem): ProfileItem {
@@ -117,6 +135,7 @@ class ServerUiState(
         val isShadowsocks = configType == EConfigType.SHADOWSOCKS
         val isSocksOrHttp = configType == EConfigType.SOCKS || configType == EConfigType.HTTP
         val isWireguard = configType == EConfigType.WIREGUARD
+        val isAmnezia = configType == EConfigType.AMNEZIA_WG
         val isHysteria2 = configType == EConfigType.HYSTERIA2
 
         return initialConfig.copy(
@@ -132,16 +151,24 @@ class ServerUiState(
             },
             flow = if (isVless) flow else null,
             username = if (isSocksOrHttp) username else null,
-            secretKey = if (isWireguard) secretKey else null,
+            secretKey = if (isWireguard || isAmnezia) secretKey else null,
             publicKey = when {
-                isWireguard -> publicKey
+                isWireguard || isAmnezia -> publicKey
                 streamSecurity == REALITY -> publicKeyReality
                 else -> null
             },
-            preSharedKey = if (isWireguard) preSharedKey else null,
-            reserved = if (isWireguard) reserved else null,
-            localAddress = if (isWireguard) localAddress else null,
-            mtu = if (isWireguard) mtu.toIntOrNull() else null,
+            preSharedKey = if (isWireguard || isAmnezia) preSharedKey else null,
+            reserved = if (isWireguard || isAmnezia) reserved else null,
+            localAddress = if (isWireguard || isAmnezia) localAddress else null,
+            mtu = if (isWireguard || isAmnezia) mtu.toIntOrNull() else null,
+            awgJunkPacketCount = if (isAmnezia) awgJunkPacketCount.toIntOrNull() else null,
+            awgJunkPacketMinSize = if (isAmnezia) awgJunkPacketMinSize.toIntOrNull() else null,
+            awgJunkPacketMaxSize = if (isAmnezia) awgJunkPacketMaxSize.toIntOrNull() else null,
+            awgInitPacketJunkSize = if (isAmnezia) awgInitPacketJunkSize.toIntOrNull() else null,
+            awgResponsePacketJunkSize = if (isAmnezia) awgResponsePacketJunkSize.toIntOrNull() else null,
+            awgInitPacketMagicHeader = if (isAmnezia) awgInitPacketMagicHeader.nullIfBlank() else null,
+            awgResponsePacketMagicHeader = if (isAmnezia) awgResponsePacketMagicHeader.nullIfBlank() else null,
+            awgUnderloadPacketMagicHeader = if (isAmnezia) awgUnderloadPacketMagicHeader.nullIfBlank() else null,
             obfsPassword = if (isHysteria2) obfsPassword else null,
             portHopping = if (isHysteria2) portHopping else null,
             portHoppingInterval = if (isHysteria2) portHoppingInterval else null,
@@ -175,7 +202,8 @@ class ServerUiState(
             mldsa65Verify = mldsa65Verify,
             echConfigList = echConfigList,
             verifyPeerCertByName = verifyPeerCertByName,
-            pinnedCA256 = pinnedCA256
+            pinnedCA256 = pinnedCA256,
+            dnsServers = if (configType == EConfigType.DNS) dnsServers.nullIfBlank() else null
         )
     }
 
@@ -199,6 +227,14 @@ class ServerUiState(
                 reserved = initialConfig.reserved ?: "0,0,0",
                 localAddress = initialConfig.localAddress ?: WIREGUARD_LOCAL_ADDRESS_V4,
                 mtu = initialConfig.mtu?.toString() ?: WIREGUARD_LOCAL_MTU,
+                awgJunkPacketCount = initialConfig.awgJunkPacketCount?.toString() ?: "",
+                awgJunkPacketMinSize = initialConfig.awgJunkPacketMinSize?.toString() ?: "",
+                awgJunkPacketMaxSize = initialConfig.awgJunkPacketMaxSize?.toString() ?: "",
+                awgInitPacketJunkSize = initialConfig.awgInitPacketJunkSize?.toString() ?: "",
+                awgResponsePacketJunkSize = initialConfig.awgResponsePacketJunkSize?.toString() ?: "",
+                awgInitPacketMagicHeader = initialConfig.awgInitPacketMagicHeader?.toString() ?: "",
+                awgResponsePacketMagicHeader = initialConfig.awgResponsePacketMagicHeader?.toString() ?: "",
+                awgUnderloadPacketMagicHeader = initialConfig.awgUnderloadPacketMagicHeader?.toString() ?: "",
                 obfsPassword = initialConfig.obfsPassword ?: "",
                 portHopping = initialConfig.portHopping ?: "",
                 portHoppingInterval = initialConfig.portHoppingInterval ?: "",
@@ -229,7 +265,8 @@ class ServerUiState(
                 mldsa65Verify = initialConfig.mldsa65Verify ?: "",
                 echConfigList = initialConfig.echConfigList ?: "",
                 verifyPeerCertByName = initialConfig.verifyPeerCertByName ?: "",
-                pinnedCA256 = initialConfig.pinnedCA256 ?: ""
+                pinnedCA256 = initialConfig.pinnedCA256 ?: "",
+                dnsServers = initialConfig.dnsServers ?: ""
             )
 
         fun from(

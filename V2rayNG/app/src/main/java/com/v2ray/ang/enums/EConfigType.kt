@@ -10,11 +10,13 @@ enum class EConfigType(val value: Int, val protocolScheme: String) {
     VLESS(5, AppConfig.VLESS),
     TROJAN(6, AppConfig.TROJAN),
     WIREGUARD(7, AppConfig.WIREGUARD),
-
-    //    TUIC(8, AppConfig.TUIC),
+    AMNEZIA_WG(8, AppConfig.AMNEZIA),
     HYSTERIA2(9, AppConfig.HYSTERIA2),
     HYSTERIA(900, AppConfig.HYSTERIA),
     HTTP(10, AppConfig.HTTP),
+    PSIPHON(11, AppConfig.PSIPHON),
+    SLIPNET(12, AppConfig.SLIPNET),
+    DNS(13, AppConfig.DNS),
     POLICYGROUP(101, AppConfig.CUSTOM),
     PROXYCHAIN(102, AppConfig.CUSTOM);
 

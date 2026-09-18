@@ -12,8 +12,6 @@
     <string name="action_cancel">Hủy</string>
     <string name="migration_fail">Không thể chuyển dữ liệu!</string>
     <string name="pull_down_to_refresh">Kéo xuống để làm mới!</string>
-
-    <!-- Notifications -->
     <string name="notification_action_stop_v2ray">Ngắt kết nối v2rayNG</string>
     <string name="toast_permission_denied">Vui lòng cấp các quyền cần thiết cho v2rayNG. Bạn có thể đã từ chối quyền truy cập máy ảnh hoặc bộ nhớ.</string>
     <string name="toast_permission_denied_notification">Không thể nhận quyền thông báo</string>
@@ -22,8 +20,6 @@
     <string name="toast_services_stop">Đã dừng v2rayNG!</string>
     <string name="toast_services_success">Đã khởi động v2rayNG!</string>
     <string name="toast_services_failure">Không thể khởi động v2rayNG, kiểm tra lại cấu hình!</string>
-
-    <!--ServerActivity-->
     <string name="title_server">v2rayNG</string>
     <string name="menu_item_add_config">Thêm cấu hình</string>
     <string name="menu_item_save_config">Lưu cấu hình</string>
@@ -42,6 +38,34 @@
     <string name="menu_item_import_config_manually_trojan">Thêm [Trojan]</string>
     <string name="menu_item_import_config_manually_wireguard">Thêm [WireGuard]</string>
     <string name="menu_item_import_config_manually_hysteria2">Thêm [Hysteria2]</string>
+    <string name="menu_item_import_config_manually_dns" translatable="false">Thêm [DNS]</string>
+    <string name="dns_lab_servers" translatable="false">Máy chủ DNS (IPv4/IPv6, phân tách bằng dấu phẩy)</string>
+    <string name="toast_dns_requires_vpn" translatable="false">Hồ sơ DNS yêu cầu chế độ VPN</string>
+    <string name="title_dns_changer">Đổi DNS</string>
+    <string name="title_dns_ping_checker">Ping DNS</string>
+    <string name="dns_title_profile_activated">Hồ sơ đang dùng</string>
+    <string name="dns_title_no_profiles">Chưa có hồ sơ DNS nào.</string>
+    <string name="dns_title_name">Tên</string>
+    <string name="dns_title_ipv4_primary">IPv4 chính</string>
+    <string name="dns_title_ipv4_secondary">IPv4 phụ</string>
+    <string name="dns_title_ipv6_primary">IPv6 chính</string>
+    <string name="dns_title_ipv6_secondary">IPv6 phụ</string>
+    <string name="dns_title_save_profile">Lưu</string>
+    <string name="dns_title_activate">Kích hoạt hồ sơ DNS này</string>
+    <string name="dns_title_deactivate">Hủy kích hoạt hồ sơ DNS này</string>
+    <string name="dns_title_delete_profile">Xóa hồ sơ DNS này</string>
+    <string name="dns_title_server">Máy chủ DNS</string>
+    <string name="dns_hint_multi_server">Tách nhiều máy chủ bằng dấu phẩy</string>
+    <string name="dns_title_domain">Tên miền</string>
+    <string name="dns_title_timeout">Thời gian chờ (ms)</string>
+    <string name="dns_title_latency">Độ trễ: %1$s ms</string>
+    <string name="dns_title_no_result">Không phản hồi</string>
+    <string name="dns_title_no_valid_servers">Nhập ít nhất một địa chỉ máy chủ DNS hợp lệ</string>
+    <string name="dns_title_ping">Ping</string>
+    <string name="string_search">Tìm máy chủ</string>
+    <string name="acc_menu">Mở menu</string>
+    <string name="acc_close">Đóng tìm kiếm</string>
+    <string name="acc_more_options">Tùy chọn khác</string>
     <string name="confirm_delete_visible_profiles">Bạn có chắc muốn xóa tất cả cấu hình đang hiển thị không?</string>
     <string name="confirm_delete_duplicate_profiles">Bạn có chắc muốn xóa tất cả cấu hình trùng lặp đang hiển thị không?</string>
     <string name="confirm_delete_invalid_profiles">Vui lòng kiểm tra các cấu hình trước. Bạn có chắc muốn xóa tất cả cấu hình không hợp lệ đang hiển thị không?</string>
@@ -136,8 +160,6 @@
     <string name="pinned_ca256_action_fetch">Lấy dấu vân tay chứng chỉ</string>
     <string name="toast_fetch_cert_sha256_success">Đã lấy dấu vân tay chứng chỉ thành công</string>
     <string name="toast_fetch_cert_sha256_failed">Không thể lấy dấu vân tay chứng chỉ</string>
-
-    <!-- UserAssetActivity -->
     <string name="toast_asset_copy_failed">Không thể sao chép tệp tin, hãy dùng trình quản lý tệp!</string>
     <string name="menu_item_add_asset">Thêm tài nguyên</string>
     <string name="menu_item_add_file">Thêm tệp</string>
@@ -149,8 +171,6 @@
     <string name="msg_file_not_found">Không tìm thấy tập tin!</string>
     <string name="msg_remark_is_duplicate">Tên này đã tồn tại!</string>
     <string name="asset_geo_files_sources">Nguồn tệp Geo (tùy chọn)</string>
-
-    <!-- PerAppProxyActivity -->
     <string name="msg_dialog_progress">Đang tải…</string>
     <string name="menu_item_search">Tìm kiếm</string>
     <string name="menu_item_select_all">Chọn tất cả</string>
@@ -164,8 +184,6 @@
     <string name="per_app_proxy_settings">Cài đặt theo ứng dụng</string>
     <string name="per_app_proxy_settings_enable">Bật cài đặt theo ứng dụng</string>
     <string name="app_picker_unknown_app">Ứng dụng không xác định (không nhận dạng được UID)</string>
-
-    <!-- Preferences -->
     <string name="title_settings">Cài đặt</string>
     <string name="title_advanced">Cài đặt nâng cao</string>
     <string name="title_core_settings">Cài đặt lõi</string>
@@ -177,8 +195,6 @@
     <string name="title_system_vpn_settings">Cài đặt VPN hệ thống</string>
     <string name="summary_system_vpn_settings">Mở cài đặt VPN của Android để cấu hình VPN luôn bật, nếu thiết bị này hỗ trợ.</string>
     <string name="toast_system_vpn_settings_unavailable">Không có cài đặt VPN hệ thống.</string>
-
-
     <string name="subscription_updater_job_tips">Tác vụ sẽ chạy trong nền và thông tin tiến độ sẽ hiển thị trong thông báo.</string>
     <string name="title_pref_auto_test_after_update_subscription">Tự động kiểm tra sau khi cập nhật đăng ký</string>
     <string name="summary_pref_auto_test_after_update_subscription">Quá trình kiểm tra tự động mất nhiều thời gian. Nếu bật, tác vụ sẽ chạy trong nền; nếu không, tác vụ sẽ chạy trên trang hiện tại.</string>
@@ -186,67 +202,44 @@
     <string name="summary_pref_auto_remove_invalid_after_test">Kết quả kiểm tra có thể không chính xác; cấu hình đã xóa không thể khôi phục.</string>
     <string name="title_pref_auto_sort_after_test">Tự động sắp xếp sau khi kiểm tra</string>
     <string name="summary_pref_auto_sort_after_test">Kết quả kiểm tra có thể không chính xác;</string>
-
     <string name="title_mux_settings">Cài đặt Mux</string>
     <string name="title_pref_mux_enabled">Bật Mux</string>
     <string name="summary_pref_mux_enabled">Nhanh hơn nhưng có thể làm kết nối không ổn định.\nTùy chỉnh cách xử lý TCP, UDP và QUIC bên dưới.</string>
     <string name="title_pref_mux_concurrency">Số kết nối con TCP được ghép kênh (-1 đến 1024)</string>
     <string name="title_pref_mux_xudp_concurrency">Số kết nối con XUDP được ghép kênh (-1 đến 1024)</string>
     <string name="title_pref_mux_xudp_quic">Phương pháp xử lý lưu lượng QUIC</string>
-    <string-array name="mux_xudp_quic_entries">
-        <item>Từ chối</item>
-        <item>Cho phép</item>
-        <item>Bỏ qua</item>
-    </string-array>
-
     <string name="title_pref_speed_enabled">Hiển thị tốc độ mạng</string>
     <string name="summary_pref_speed_enabled">Hiển thị tốc độ hiện tại trong thông báo.\nBiểu tượng cho biết lưu lượng proxy hay trực tiếp đang chiếm ưu thế.</string>
-
     <string name="title_pref_sniffing_enabled">Bật Sniffing</string>
     <string name="summary_pref_sniffing_enabled">Phát hiện tên miền đích từ lưu lượng truy cập (bật theo mặc định).</string>
     <string name="title_pref_route_only_enabled">Bật routeOnly</string>
     <string name="summary_pref_route_only_enabled">Chỉ dùng tên miền phát hiện được để định tuyến và giữ địa chỉ đích ở dạng địa chỉ IP.</string>
-
     <string name="title_pref_local_dns_enabled">Bật DNS cục bộ</string>
     <string name="summary_pref_local_dns_enabled">DNS được xử lý bởi mô-đun DNS của Xray-core (khuyên dùng nếu cần định tuyến bỏ qua mạng LAN và địa chỉ ở Trung Quốc đại lục).</string>
-
     <string name="title_pref_fake_dns_enabled">Bật DNS ảo (FakeDNS)</string>
     <string name="summary_pref_fake_dns_enabled">FakeDNS trả về địa chỉ IP ảo khi phân giải tên miền (nhanh hơn nhưng có thể không hoạt động với một số ứng dụng).</string>
-
     <string name="title_pref_ipv6_enabled">Bật IPv6</string>
     <string name="summary_pref_ipv6_enabled">Thêm địa chỉ và tuyến IPv6 vào giao diện VPN</string>
-
     <string name="title_pref_prefer_ipv6">Ưu tiên IPv6</string>
     <string name="summary_pref_prefer_ipv6">Ưu tiên địa chỉ IPv6 khi phân giải tên miền</string>
-
     <string name="title_pref_remote_dns">DNS từ xa (UDP/TCP/HTTPS/QUIC) (không bắt buộc)</string>
     <string name="summary_pref_remote_dns" translatable="false">DNS</string>
-
     <string name="title_pref_vpn_dns">VPN DNS (chỉ IPv4/IPv6)</string>
     <string name="title_pref_vpn_bypass_lan">VPN có bỏ qua LAN không</string>
-
     <string name="title_pref_vpn_interface_address">Địa chỉ giao diện VPN</string>
-
     <string name="title_pref_vpn_mtu">VPN MTU (mặc định 1500)</string>
-
-
     <string name="title_pref_domestic_dns">DNS cho kết nối trực tiếp (không bắt buộc)</string>
     <string name="summary_pref_domestic_dns" translatable="false">DNS</string>
-
     <string name="title_pref_dns_hosts">Ánh xạ máy chủ DNS (định dạng: domain:address,…)</string>
     <string name="summary_pref_dns_hosts">domain:address,…</string>
-
     <string name="title_pref_delay_test_url">URL kiểm tra độ trễ thực</string>
     <string name="summary_pref_delay_test_url" translatable="false">URL</string>
     <string name="title_pref_real_ping_concurrency">Số lượt kiểm tra độ trễ thực đồng thời</string>
-
     <string name="title_pref_ip_api_url">URL kiểm tra thông tin kết nối hiện tại</string>
     <string name="summary_pref_ip_api_url" translatable="false">URL</string>
-
     <string name="title_pref_proxy_sharing_enabled">Cho phép kết nối từ mạng LAN</string>
     <string name="summary_pref_proxy_sharing_enabled">Các thiết bị khác có thể kết nối với proxy SOCKS/HTTP trên thiết bị của bạn qua mạng LAN.\nChỉ bật tính năng này trong các mạng đáng tin cậy để tránh kết nối trái phép.</string>
     <string name="toast_warning_pref_proxysharing_short">Đã cho phép kết nối từ mạng LAN. Hãy đảm bảo bạn đang dùng mạng đáng tin cậy.</string>
-
     <string name="title_pref_socks_port">Cổng proxy cục bộ</string>
     <string name="title_pref_enable_local_proxy">Bật proxy cục bộ</string>
     <string name="summary_pref_enable_local_proxy">Khi tắt, proxy SOCKS sẽ không khả dụng nên việc cập nhật đăng ký và các thao tác tương tự không thể dùng proxy</string>
@@ -259,24 +252,16 @@
     <string name="summary_pref_socks_username">Tên người dùng</string>
     <string name="title_pref_socks_password">Mật khẩu proxy cục bộ (Không bắt buộc)</string>
     <string name="summary_pref_socks_password">Mật khẩu</string>
-
     <string name="title_pref_local_dns_port">Cổng DNS cục bộ</string>
     <string name="summary_pref_local_dns_port">Cổng DNS cục bộ</string>
-
     <string name="title_pref_confirm_remove">Xác nhận xóa tệp cấu hình</string>
     <string name="summary_pref_confirm_remove">Yêu cầu xác nhận từ người dùng khi thực hiện xóa tệp cấu hình.</string>
-
-
     <string name="title_pref_append_http_proxy">Thêm proxy HTTP vào VPN</string>
     <string name="summary_pref_append_http_proxy">Proxy HTTP sẽ được trình duyệt hoặc một số ứng dụng hỗ trợ dùng trực tiếp mà không đi qua thiết bị NIC ảo (Android 10+)</string>
-
     <string name="title_pref_double_column_display">Bật hiển thị hai cột</string>
     <string name="summary_pref_double_column_display">Danh sách hồ sơ được hiển thị thành hai cột để màn hình chứa được nhiều nội dung hơn.</string>
-
     <string name="title_pref_group_all_display">Hiển thị thẻ nhóm “Tất cả”</string>
     <string name="summary_pref_group_all_display">Gộp cấu hình từ mọi nhóm đăng ký vào một thẻ.</string>
-
-    <!-- AboutActivity -->
     <string name="title_pref_feedback">Phản hồi lỗi</string>
     <string name="summary_pref_feedback">Phản hồi cải tiến hoặc lỗi lên GitHub</string>
     <string name="summary_pref_tg_group">Tham gia nhóm Telegram</string>
@@ -288,13 +273,10 @@
     <string name="title_oss_license">Giấy phép mã nguồn mở</string>
     <string name="title_translators">Người dịch</string>
     <string name="title_tg_channel">Kênh Telegram</string>
-
     <string name="title_pref_promotion">Ưu đãi</string>
-
     <string name="title_pref_auto_update_subscription">Tự động cập nhật các gói đăng ký</string>
     <string name="summary_pref_auto_update_subscription">Tự động cập nhật các gói đăng ký của bạn ở trong nền với khoảng thời gian cố định. Tùy thiết bị, tính năng này có thể không luôn hoạt động đúng như mong đợi.</string>
     <string name="title_pref_auto_update_interval">Khoảng thời gian cập nhật tự động (phút; tối thiểu 15)</string>
-
     <string name="title_core_loglevel">Cấp độ nhật ký</string>
     <string name="title_outbound_domain_resolve_method">Phân giải tên miền cho kết nối đi (outbound)</string>
     <string name="title_mode">Chế độ kết nối</string>
@@ -314,7 +296,6 @@
     <string name="toast_root_required">Tính năng này yêu cầu quyền truy cập Root</string>
     <string name="title_root_lan_sharing">Chia sẻ VPN với thiết bị LAN / chia sẻ kết nối (dành cho người dùng Root)</string>
     <string name="summary_root_lan_sharing">Định tuyến lưu lượng từ thiết bị dùng điểm phát Wi-Fi và chia sẻ kết nối USB qua VPN.</string>
-
     <string name="title_logcat" translatable="false">Logcat</string>
     <string name="logcat_copy">Sao chép</string>
     <string name="logcat_clear">Xoá</string>
@@ -357,11 +338,8 @@
     <string name="title_update_subscription_no_subscription">Không có đăng ký</string>
     <string name="toast_server_not_found_in_group">Không tìm thấy máy chủ đã chọn trong nhóm hiện tại</string>
     <string name="title_locate_selected_config">Tìm cấu hình đã chọn</string>
-
     <string name="tasker_start_service">Khởi động v2rayNG</string>
     <string name="tasker_setting_confirm">Xác nhận</string>
-
-    <!-- RoutingSettingActivity -->
     <string name="routing_settings_domain_strategy">Chiến lược tên miền (DomainStrategy)</string>
     <string name="routing_settings_title">Cài đặt định tuyến</string>
     <string name="routing_settings_tips">Quy tắc chỉ được áp dụng khi tất cả điều kiện đối sánh đã đặt đều được thỏa mãn cùng lúc (AND). Các quy tắc được kiểm tra từ trên xuống; quy tắc khớp đầu tiên sẽ được áp dụng.</string>
@@ -386,7 +364,6 @@
     <string name="routing_settings_network" translatable="false">network</string>
     <string name="routing_settings_outbound_tag_hint">proxy / direct / block / &lt;%1$s&gt;</string>
     <string name="routing_settings_outbound_tag" translatable="false">outboundTag</string>
-
     <string name="connection_test_pending">Kiểm tra kết nối</string>
     <string name="connection_test_testing">Đang kiểm tra kết nối mạng…</string>
     <string name="connection_test_testing_count">Đang kiểm tra %d cấu hình…</string>
@@ -398,7 +375,6 @@
     <string name="connection_connected">Đã kết nối.\nNhấn để kiểm tra kết nối.</string>
     <string name="connection_not_connected">Chưa kết nối</string>
     <string name="connection_running_task_left">Số lượt kiểm tra đang chạy: %s</string>
-
     <string name="import_subscription_success">Nhập gói đăng ký thành công!</string>
     <string name="import_subscription_failure">Nhập gói đăng ký không thành công!</string>
     <string name="title_fragment_settings">Cài đặt phân mảnh (Fragment)</string>
@@ -415,28 +391,23 @@
     <string name="title_pref_observatory_least_load_timeout">Thời gian chờ leastLoad</string>
     <string name="toast_invalid_observatory_duration">Khoảng thời gian không hợp lệ. Dùng giá trị như 3m hoặc 30s.</string>
     <string name="toast_invalid_observatory_sampling">Lấy mẫu không hợp lệ. Dùng một số dương.</string>
-
     <string name="update_check_for_update">Kiểm tra bản cập nhật</string>
     <string name="update_already_latest_version">Đã dùng phiên bản mới nhất</string>
     <string name="update_new_version_found">Đã tìm thấy phiên bản mới: %s</string>
     <string name="update_now">Cập nhật ngay</string>
     <string name="update_check_pre_release">Kiểm tra bản phát hành thử</string>
     <string name="update_checking_for_update">Đang kiểm tra bản cập nhật…</string>
-
     <string name="title_policy_group_type">Loại nhóm chính sách</string>
     <string name="title_policy_group_subscription_id">Từ nhóm đăng ký</string>
     <string name="title_policy_group_subscription_filter">Bộ lọc biểu thức chính quy cho tên ghi chú</string>
     <string name="title_policy_group_test_outbounds">Kiểm tra các kết nối đi (outbounds)</string>
     <string name="title_policy_group_fallback">Kết nối dự phòng (outbound, tùy chọn)</string>
-
     <string name="server_proxy_chain_members">Thành viên chuỗi proxy</string>
     <string name="server_proxy_chain_pick_members">Chạm vào đây để chọn thành viên</string>
     <string name="server_proxy_chain_member_unselected">Chọn một thành viên</string>
     <string name="server_proxy_chain_members_unselected">Vui lòng chọn thành viên cho từng hàng trong chuỗi</string>
     <string name="server_proxy_chain_members_insufficient">Không đủ thành viên</string>
     <string name="server_proxy_chain_members_invalid">Thành viên chuỗi không hợp lệ: %1$s</string>
-
-    <!-- BackupActivity -->
     <string name="title_configuration_backup_restore">Sao lưu &amp; khôi phục</string>
     <string name="title_configuration_backup">Sao lưu cấu hình</string>
     <string name="title_configuration_restore">Khôi phục cấu hình</string>
@@ -452,62 +423,21 @@
     <string name="title_webdav_user">Tên người dùng</string>
     <string name="title_webdav_pass">Mật khẩu</string>
     <string name="title_webdav_remote_path">Thư mục từ xa (không bắt buộc)</string>
-
     <string name="share_method_qrcode">Mã QR</string>
     <string name="share_method_clipboard">Sao chép liên kết cấu hình</string>
     <string name="share_method_full_content">Sao chép toàn bộ cấu hình</string>
     <string name="action_edit">Chỉnh sửa</string>
     <string name="action_delete">Xoá</string>
     <string name="action_close">Đóng</string>
-
     <string name="share_subscription_qrcode">Xuất gói ra mã QR (Chụp màn hình để lưu)</string>
     <string name="share_subscription_clipboard">Xuất gói vào bảng tạm</string>
-
-    <string-array name="mode_entries">
-        <item>Chế độ VPN</item>
-        <item>Chế độ Proxy</item>
-    </string-array>
-
-    <string-array name="browser_dialer_mode">
-        <item>Tắt</item>
-        <item>OkHttp</item>
-        <item>WebView</item>
-    </string-array>
-
-    <string-array name="ui_mode_night">
-        <item>Theo hệ thống</item>
-        <item>Sáng</item>
-        <item>Tối</item>
-    </string-array>
-
     <string name="routing_preset_china_whitelist">Danh sách trắng Trung Quốc</string>
     <string name="routing_preset_china_blacklist">Danh sách đen Trung Quốc</string>
     <string name="routing_preset_global">Toàn cầu</string>
     <string name="routing_preset_iran_whitelist">Danh sách trắng Iran</string>
     <string name="routing_preset_russia_whitelist">Danh sách trắng Nga</string>
-
-    <string-array name="vpn_bypass_lan">
-        <item>Theo cấu hình</item>
-        <item>Bỏ qua</item>
-        <item>Không bỏ qua</item>
-    </string-array>
-
-    <string-array name="outbound_domain_resolve_method">
-        <item>Không phân giải</item>
-        <item>Phân giải và thêm vào DNS Hosts</item>
-        <item>Phân giải và thay thế tên miền</item>
-    </string-array>
-
-    <string-array name="policy_group_type">
-        <item>Ping thấp nhất (leastPing)</item>
-        <item>Tải thấp nhất (leastLoad)</item>
-        <item>Ngẫu nhiên (random)</item>
-        <item>Luân phiên (roundRobin)</item>
-    </string-array>
-
     <string name="backup_location_local">Cục bộ</string>
     <string name="backup_location_webdav" translatable="false">WebDAV</string>
-
     <string name="acc_refresh">Làm mới nhật ký</string>
     <string name="toast_permission_denied_for">Chưa cấp quyền: %1$s</string>
     <string name="acc_add_subscription">Thêm gói đăng ký</string>
@@ -549,6 +479,27 @@
     <string name="tasker_blurb_start">Khởi động %1$s</string>
     <string name="tasker_blurb_stop">Dừng %1$s</string>
     <string name="connection_test_empty_message">không có thông tin chi tiết</string>
+    <string name="menu_item_import_config_slipnet_paste">Dán cấu hình SlipNet</string>
+    <string name="menu_item_import_config_manually_amnezia">Thêm [AmneziaWG]</string>
+    <string name="paste_hint_slipnet">Dán một hoặc nhiều liên kết SlipNet (slipnet://)</string>
+    <string name="paste_hint_wireguard">Dán cấu hình WireGuard hoặc liên kết wireguard://</string>
+    <string name="toast_slipnet_unsupported">Công cụ SlipNet không khả dụng trong bản dựng này</string>
+    <string name="toast_psiphon_unsupported">Công cụ Psiphon không khả dụng trong bản dựng này</string>
+    <string name="toast_amnezia_unsupported">Bản dựng này không hỗ trợ mã hóa AmneziaWG</string>
+    <string name="server_lab_amnezia_jc">Số gói rác (Jc)</string>
+    <string name="server_lab_amnezia_jmin">Kích thước gói rác tối thiểu (Jmin)</string>
+    <string name="server_lab_amnezia_jmax">Kích thước gói rác tối đa (Jmax)</string>
+    <string name="server_lab_amnezia_s1">Kích thước gói rác khởi tạo (S1)</string>
+    <string name="server_lab_amnezia_s2">Kích thước gói rác phản hồi (S2)</string>
+    <string name="server_lab_amnezia_h1">Tiêu đề ma thuật gói khởi tạo (H1)</string>
+    <string name="server_lab_amnezia_h2">Tiêu đề ma thuật gói phản hồi (H2)</string>
+    <string name="server_lab_amnezia_h5">Tiêu đề ma thuật gói dưới tải (H5)</string>
+    <string name="dns_title_psiphon_region">Khu vực</string>
+    <string name="slipnet_title_tunnel_type">Loại đường hầm</string>
+    <string name="slipnet_title_resolvers">Máy phân giải</string>
+    <string name="slipnet_title_public_key">Khóa công khai</string>
+    <string name="slipnet_title_config">Cấu hình</string>
+    <string name="title_pref_mirrly_enabled">Mirrly</string>
+    <string name="summary_pref_mirrly_enabled">Bật proxy Telegram Mirrly cùng với đường hầm</string>
     <string name="value_unknown">không xác định</string>
-
 </resources>

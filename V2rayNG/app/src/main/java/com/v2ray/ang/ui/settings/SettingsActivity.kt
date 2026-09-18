@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -40,6 +41,7 @@ import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.handler.MmkvManager.rememberMmkvBool
 import com.v2ray.ang.handler.MmkvManager.rememberMmkvString
 import com.v2ray.ang.handler.SettingsChangeManager
+import com.v2ray.ang.mtproto.NativeProxy
 import com.v2ray.ang.root.RootManager
 import com.v2ray.ang.ui.base.BaseComponentActivity
 import com.v2ray.ang.ui.compose.AppTopBar
@@ -102,6 +104,7 @@ fun SettingsScreen(
     onModeHelpClicked: () -> Unit,
     onSystemVpnSettingsClicked: () -> Unit
 ) {
+    val context = LocalContext.current
     val scrollState = rememberScrollState()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val systemVpnSettingsAvailable by viewModel.systemVpnSettingsAvailable.collectAsStateWithLifecycle()
@@ -153,6 +156,9 @@ fun SettingsScreen(
     var socksPassword by rememberMmkvString(AppConfig.PREF_SOCKS_PASSWORD, "")
     var socksEnableUdp by rememberMmkvBool(AppConfig.PREF_SOCKS_ENABLE_UDP, AppConfig.DEFAULT_SOCKS_ENABLE_UDP)
     var proxySharing by rememberMmkvBool(AppConfig.PREF_PROXY_SHARING, false)
+    var mirrlyEnabled by rememberMmkvBool(AppConfig.PREF_MIRRLY_ENABLED, false)
+    var mirrlyDomain by rememberMmkvString(AppConfig.PREF_MIRRLY_DOMAIN, "")
+    var mirrlyPort by rememberMmkvString(AppConfig.PREF_MIRRLY_PORT, "1443")
 
     var speedEnabled by rememberMmkvBool(AppConfig.PREF_SPEED_ENABLED, false)
     var confirmRemove by rememberMmkvBool(AppConfig.PREF_CONFIRM_REMOVE, false)
@@ -472,6 +478,41 @@ fun SettingsScreen(
                     checked = socksEnableUdp,
                     enabled = effectiveLocalProxy,
                     onCheckedChange = { socksEnableUdp = it }
+                )
+                SettingsSwitchItem(
+                    title = stringResource(R.string.title_pref_mirrly_enabled),
+                    summary = stringResource(R.string.summary_pref_mirrly_enabled),
+                    checked = mirrlyEnabled,
+                    onCheckedChange = { enabled ->
+                        mirrlyEnabled = enabled
+                        val startDomain = mirrlyDomain
+                            .takeIf { it.isNotBlank() }
+                            ?: AppConfig.MIRRLY_DEFAULT_DOMAIN
+                        val startPort = mirrlyPort.toIntOrNull() ?: AppConfig.MIRRLY_DEFAULT_PORT
+                        if (enabled) {
+                            NativeProxy.start(startDomain, startPort, context) { code ->
+                                if (code != 0) {
+                                    mirrlyEnabled = false
+                                    context.toastError(context.getString(R.string.mirrly_status_failed, code))
+                                }
+                            }
+                        } else {
+                            NativeProxy.stop(context, clearEnabled = true)
+                        }
+                    }
+                )
+                SettingsEditItem(
+                    title = stringResource(R.string.mirrly_worker_domain),
+                    value = mirrlyDomain,
+                    enabled = mirrlyEnabled,
+                    onValueChanged = { mirrlyDomain = it }
+                )
+                SettingsEditItem(
+                    title = stringResource(R.string.mirrly_port),
+                    value = mirrlyPort,
+                    enabled = mirrlyEnabled,
+                    keyboardNumber = true,
+                    onValueChanged = { mirrlyPort = it }
                 )
                 SettingsEditItem(
                     title = stringResource(R.string.title_pref_remote_dns),

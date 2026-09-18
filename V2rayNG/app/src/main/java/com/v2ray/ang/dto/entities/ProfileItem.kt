@@ -57,6 +57,34 @@ data class ProfileItem(
     var reserved: String? = null,
     var mtu: Int? = null,
 
+    // AmneziaWG junk/obfuscation parameters (persisted for round-trip export).
+    var awgJunkPacketCount: Int? = null,
+    var awgJunkPacketMinSize: Int? = null,
+    var awgJunkPacketMaxSize: Int? = null,
+    var awgInitPacketJunkSize: Int? = null,
+    var awgResponsePacketJunkSize: Int? = null,
+    var awgInitPacketMagicHeader: String? = null,
+    var awgResponsePacketMagicHeader: String? = null,
+    var awgUnderloadPacketMagicHeader: String? = null,
+
+    // Psiphon server entry
+    var psiphonRegion: String? = null,
+
+    // SlipNet profile (decentralized WireGuard/DNS-tunnel network). The raw
+    // slipnet:// link is preserved for lossless round-trip export; the remaining
+    // fields are the parsed subset shown in the server list and editor.
+    var slipNetVersion: String? = null,
+    var slipNetTunnelType: String? = null,
+    var slipNetResolvers: String? = null,
+    var slipNetTorBridgeLines: String? = null,
+    var slipNetPublicKey: String? = null,
+    var slipNetConfig: String? = null,
+
+    // DNS-only profile (first-class DNS in the server list). dnsServers holds a
+    // comma-separated list of IPv4/IPv6 resolver addresses (primary, secondary).
+    var dnsServers: String? = null,
+    var dnsEnabled: Boolean? = null,
+
     var obfsPassword: String? = null,
     var portHopping: String? = null,
     var portHoppingInterval: String? = null,
@@ -74,6 +102,18 @@ data class ProfileItem(
 
     var browserDialerMode: String? = null,
 ) {
+
+    /**
+     * True when AmneziaWG obfuscation fields that the bundled Xray core cannot
+     * honor are set. Junk packet counts alone (Jc/Jmin/Jmax) map to plain
+     * WireGuard and must not trip this flag.
+     */
+    val hasAmneziaObfuscation: Boolean
+        get() = (awgInitPacketJunkSize ?: 0) > 0
+            || (awgResponsePacketJunkSize ?: 0) > 0
+            || !awgInitPacketMagicHeader.isNullOrBlank()
+            || !awgResponsePacketMagicHeader.isNullOrBlank()
+            || !awgUnderloadPacketMagicHeader.isNullOrBlank()
 
     companion object {
         fun create(configType: EConfigType): ProfileItem =

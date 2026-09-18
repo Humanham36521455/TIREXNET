@@ -18,9 +18,11 @@ import com.v2ray.ang.contracts.ServiceControl
 import com.v2ray.ang.contracts.Tun2SocksControl
 import com.v2ray.ang.core.CoreServiceManager
 import com.v2ray.ang.handler.AppLocaleManager
+import com.v2ray.ang.handler.DnsManager
 import com.v2ray.ang.handler.MmkvManager
 import com.v2ray.ang.handler.NotificationManager
 import com.v2ray.ang.handler.SettingsManager
+import com.v2ray.ang.mtproto.NativeProxy
 import com.v2ray.ang.root.RootLanSharing
 import com.v2ray.ang.util.LogUtil
 import com.v2ray.ang.util.Utils
@@ -114,6 +116,12 @@ class CoreVpnService : VpnService(), ServiceControl {
 
         // Start LAN sharing if enabled in settings
         RootLanSharing.startClientSharing(this)
+
+        // Start the Mirrly TG proxy when its Settings toggle is on. The engine runs
+        // on NativeProxy's own control thread, never on the service main thread.
+        if (MmkvManager.decodeSettingsBool(AppConfig.PREF_MIRRLY_ENABLED)) {
+            NativeProxy.startConfigured(this)
+        }
     }
 
     override fun stopService() {
@@ -235,6 +243,14 @@ class CoreVpnService : VpnService(), ServiceControl {
             }
         }
 
+        // DNS Changer: apply the active custom DNS profile on top of the configured
+        // VPN DNS. Android restores the previous resolver when the interface closes.
+        DnsManager.getActiveServers().forEach {
+            if (Utils.isPureIpAddress(it)) {
+                builder.addDnsServer(it)
+            }
+        }
+
         //builder.setSession(V2RayServiceManager.getRunningServerName())
     }
 
@@ -331,6 +347,10 @@ class CoreVpnService : VpnService(), ServiceControl {
         RootLanSharing.stopClientSharing(this)
 
         CoreServiceManager.stopCoreLoop()
+
+        // Stop the Mirrly TG proxy started with the tunnel. Keep the PREF_MIRRLY_ENABLED
+        // flag so a later tunnel start restores it.
+        NativeProxy.stop(this, clearEnabled = false)
 
         if (isForced) {
             //stopSelf has to be called ahead of mInterface.close(). otherwise v2ray core cannot be stooped

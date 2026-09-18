@@ -1,9 +1,14 @@
 package com.v2ray.ang.mtproto
 
+import android.content.Context
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.sun.jna.Library
 import com.sun.jna.Native
 import com.sun.jna.Pointer
+import com.v2ray.ang.AppConfig
+import com.v2ray.ang.handler.MmkvManager
+import java.util.concurrent.Executors
 
 private interface ProxyLibrary : Library {
     companion object {
@@ -74,6 +79,79 @@ object NativeProxy {
         } catch (t: Throwable) {
             Log.e(TAG, "FFI call failed [stopProxy]: ${t.message}", t)
             -1
+        }
+    }
+
+    private val controlExecutor = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "mirrly-control").apply { isDaemon = true }
+    }
+
+    /**
+     * Starts the engine on a background thread with the given listen address.
+     * On success persists [AppConfig.PREF_MIRRLY_ENABLED], domain, and port so the
+     * service layer can honor the flag on later tunnel starts. The result is
+     * delivered on the main executor.
+     */
+    fun start(
+        domain: String,
+        port: Int,
+        context: Context,
+        onResult: ((Int) -> Unit)? = null,
+    ) {
+        val safePort = port.coerceIn(1, 65535)
+        if (isStarted) {
+            onResult?.invoke(0)
+            return
+        }
+        val mainExecutor = ContextCompat.getMainExecutor(context)
+        controlExecutor.execute {
+            setCfProxyCacheDir(context.cacheDir.absolutePath)
+            setCfProxyConfig(true, domain)
+            val code = startProxy(AppConfig.LOOPBACK, safePort, "", "", 0)
+            if (code == 0) {
+                MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_ENABLED, true)
+                MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_DOMAIN, domain)
+                MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_PORT, safePort.toString())
+            }
+            mainExecutor.execute { onResult?.invoke(code) }
+        }
+    }
+
+    /**
+     * Starts the engine from persisted settings, falling back to the app defaults.
+     * Used by the VPN service to honor [AppConfig.PREF_MIRRLY_ENABLED].
+     */
+    fun startConfigured(context: Context, onResult: ((Int) -> Unit)? = null) {
+        val domain = MmkvManager.decodeSettingsString(AppConfig.PREF_MIRRLY_DOMAIN)
+            ?.takeIf { it.isNotBlank() }
+            ?: AppConfig.MIRRLY_DEFAULT_DOMAIN
+        val port = MmkvManager.decodeSettingsString(AppConfig.PREF_MIRRLY_PORT)
+            ?.toIntOrNull()
+            ?: AppConfig.MIRRLY_DEFAULT_PORT
+        start(domain, port, context, onResult)
+    }
+
+    /**
+     * Stops the engine on a background thread. Clears
+     * [AppConfig.PREF_MIRRLY_ENABLED] only when [clearEnabled] is true; the VPN
+     * teardown path passes false so the flag survives a tunnel restart. The result
+     * is delivered on the main executor.
+     */
+    fun stop(context: Context, clearEnabled: Boolean, onStopped: ((Int) -> Unit)? = null) {
+        if (!isStarted) {
+            if (clearEnabled) {
+                MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_ENABLED, false)
+            }
+            onStopped?.invoke(0)
+            return
+        }
+        val mainExecutor = ContextCompat.getMainExecutor(context)
+        controlExecutor.execute {
+            val code = stopProxy()
+            if (clearEnabled) {
+                MmkvManager.encodeSettings(AppConfig.PREF_MIRRLY_ENABLED, false)
+            }
+            mainExecutor.execute { onStopped?.invoke(code) }
         }
     }
 
